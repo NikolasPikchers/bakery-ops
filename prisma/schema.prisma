@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum SheetType {
+  pies
+  desserts
+  confectionery_freeform
+}
+
+enum PointScope {
+  both
+  point1
+  point2
+}
+
+enum SheetStatus {
+  uploaded
+  recognized
+  needs_review
+  confirmed
+}
+
+enum SheetSource {
+  telegram
+  web
+}
+
+enum UnknownLineStatus {
+  pending
+  mapped
+  ignored
+}
+
+model Point {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  createdAt DateTime   @default(now())
+  movements Movement[]
+  sheets    Sheet[]
+}
+
+model Product {
+  id            String      @id @default(cuid())
+  name          String
+  sheetType     SheetType
+  pointScope    PointScope  @default(both)
+  shelfLifeDays Int?
+  defaultPrice  Decimal?    @db.Decimal(10, 2)
+  aliases       String[]    @default([])
+  active        Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  movements     Movement[]
+
+  @@unique([name, sheetType])
+}
+
+model Sheet {
+  id              String        @id @default(cuid())
+  pointId         String
+  point           Point         @relation(fields: [pointId], references: [id])
+  sheetType       SheetType
+  imageUrl        String
+  imageHash       String
+  dates           DateTime[]    @db.Date
+  source          SheetSource
+  uploadedBy      String?
+  status          SheetStatus   @default(uploaded)
+  rawRecognition  Json?
+  createdAt       DateTime      @default(now())
+  confirmedAt     DateTime?
+  movements       Movement[]
+  unknownLines    UnknownLine[]
+
+  @@index([pointId, sheetType])
+  @@index([imageHash])
+}
+
+model Movement {
+  id             String   @id @default(cuid())
+  pointId        String
+  point          Point    @relation(fields: [pointId], references: [id])
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id])
+  date           DateTime @db.Date
+  prihod         Int?
+  ostatok        Int?
+  spisanie       Int?
+  soldCalc       Int?
+  sheetId        String?
+  sheet          Sheet?   @relation(fields: [sheetId], references: [id])
+  confidence     Float?
+  rawCell        Json?
+  manuallyEdited Boolean  @default(false)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([pointId, productId, date])
+  @@index([date])
+}
+
+model UnknownLine {
+  id              String            @id @default(cuid())
+  sheetId         String
+  sheet           Sheet             @relation(fields: [sheetId], references: [id])
+  pointId         String
+  date            DateTime?         @db.Date
+  rawText         String
+  parsedNumbers   Json?
+  status          UnknownLineStatus @default(pending)
+  mappedProductId String?
+  createdAt       DateTime          @default(now())
+}
