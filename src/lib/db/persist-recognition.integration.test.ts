@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { persistRecognition } from './persist-recognition';
 import { findSheetByImageHash } from './movements-repo';
 import type { RecognitionRecords } from '@/lib/persistence/recognition-to-records';
@@ -11,20 +12,20 @@ describe.skipIf(!hasDb)('persistRecognition (реальная БД)', () => {
   const hash = `test-${Date.now()}`;
 
   beforeAll(async () => {
-    prisma = new PrismaClient();
+    prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
     await prisma.point.upsert({ where: { id: 'pt-test' }, update: {}, create: { id: 'pt-test', name: 'TEST POINT' } });
     await prisma.product.upsert({
       where: { name_sheetType: { name: 'TEST SKU', sheetType: 'pies' } },
       update: {}, create: { id: 'pr-test', name: 'TEST SKU', sheetType: 'pies' },
     });
-  });
+  }, 30_000); // Neon serverless может «просыпаться» на первом запросе
 
   afterAll(async () => {
     await prisma.movement.deleteMany({ where: { pointId: 'pt-test' } });
     await prisma.unknownLine.deleteMany({ where: { pointId: 'pt-test' } });
     await prisma.sheet.deleteMany({ where: { imageHash: hash } });
     await prisma.$disconnect();
-  });
+  }, 30_000);
 
   it('пишет Sheet + Movement и дедупит повтор', async () => {
     const records: RecognitionRecords = {
