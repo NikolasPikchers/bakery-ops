@@ -36,12 +36,33 @@ enum UnknownLineStatus {
   ignored
 }
 
+enum RevenueSource {
+  manual
+  import
+}
+
+enum ExpenseSource {
+  manual
+  import
+}
+
+enum ExpenseCategory {
+  produkty
+  arenda
+  fot
+  kommunalka
+  nalogi
+  prochee
+}
+
 model Point {
   id        String     @id @default(cuid())
   name      String     @unique
   createdAt DateTime   @default(now())
   movements Movement[]
   sheets    Sheet[]
+  revenues  Revenue[]
+  expenses  Expense[]
 }
 
 model Product {
@@ -114,4 +135,37 @@ model UnknownLine {
   status          UnknownLineStatus @default(pending)
   mappedProductId String?
   createdAt       DateTime          @default(now())
+}
+
+model Revenue {
+  id        String        @id @default(cuid())
+  pointId   String
+  point     Point         @relation(fields: [pointId], references: [id])
+  date      DateTime      @db.Date
+  amount    Decimal       @db.Decimal(12, 2)
+  source    RevenueSource @default(manual)
+  note      String?
+  createdBy String?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  @@unique([pointId, date])
+  @@index([date])
+}
+
+model Expense {
+  id        String          @id @default(cuid())
+  pointId   String
+  point     Point           @relation(fields: [pointId], references: [id])
+  date      DateTime        @db.Date
+  amount    Decimal         @db.Decimal(12, 2)
+  category  ExpenseCategory
+  source    ExpenseSource   @default(manual)
+  note      String?
+  createdBy String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([pointId, date])
+  @@index([date])
 }
