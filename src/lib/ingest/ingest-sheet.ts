@@ -40,7 +40,8 @@ export async function ingestSheetPhoto(input: IngestInput, deps: IngestDeps): Pr
   if (existing) return { sheetId: existing.id, status: 'duplicate', deduped: true };
 
   const sheetId = deps.newId();
-  const { url } = await deps.blob.put(`sheets/${sheetId}.jpg`, input.bytes, input.mediaType);
+  const ext = input.mediaType === 'image/png' ? 'png' : input.mediaType === 'image/webp' ? 'webp' : 'jpg';
+  const { url } = await deps.blob.put(`sheets/${sheetId}.${ext}`, input.bytes, input.mediaType);
 
   const result = await deps.recognize({
     image: { kind: 'base64', mediaType: input.mediaType, data: Buffer.from(input.bytes).toString('base64') },

@@ -35,7 +35,7 @@ export type MovementRecord = {
   sheetId: string;
   confidence: number;
   rawCell: { prihod: string; ostatok: string; spisanie: string };
-  manuallyEdited: false;
+  manuallyEdited: boolean;
 };
 
 export type UnknownLineRecord = {

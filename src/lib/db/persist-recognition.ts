@@ -22,9 +22,13 @@ export async function persistRecognition(
     getPreviousOstatok(prisma, pointId, productId, beforeDate),
   );
 
-  await createSheet(prisma, records.sheet);
-  await upsertMovements(prisma, movements);
-  await createUnknownLines(prisma, records.unknownLines);
+  // Атомарно: иначе при падении между записями Sheet остаётся без движений,
+  // а повтор дедупится по imageHash и лист «залипает» недописанным.
+  await prisma.$transaction(async (tx) => {
+    await createSheet(tx, records.sheet);
+    await upsertMovements(tx, movements);
+    await createUnknownLines(tx, records.unknownLines);
+  });
 
   return { deduped: false, sheetId: records.sheet.id };
 }
