@@ -3,10 +3,10 @@ import { parseQuantity } from './parseQuantity';
 
 describe('parseQuantity', () => {
   it('пустое и прочерк → null, не ambiguous', () => {
-    expect(parseQuantity('')).toMatchObject({ value: null, ambiguous: false });
-    expect(parseQuantity('   ')).toMatchObject({ value: null, ambiguous: false });
-    expect(parseQuantity('-')).toMatchObject({ value: null, ambiguous: false });
-    expect(parseQuantity('—')).toMatchObject({ value: null, ambiguous: false });
+    expect(parseQuantity('')).toMatchObject({ value: null, parts: [], ambiguous: false });
+    expect(parseQuantity('   ')).toMatchObject({ value: null, parts: [], ambiguous: false });
+    expect(parseQuantity('-')).toMatchObject({ value: null, parts: [], ambiguous: false });
+    expect(parseQuantity('—')).toMatchObject({ value: null, parts: [], ambiguous: false });
   });
 
   it('одиночное число', () => {
@@ -35,6 +35,18 @@ describe('parseQuantity', () => {
 
   it('кружок-итог ⑨: math сходится', () => {
     expect(parseQuantity('6+3 ⑨')).toMatchObject({ value: 9, parts: [6, 3], ambiguous: false });
+  });
+
+  it('кружок-итог не сходится → ambiguous, берём кружок', () => {
+    expect(parseQuantity('6+3 ⑤')).toMatchObject({ value: 5, parts: [6, 3], ambiguous: true });
+  });
+
+  it('смешанные операторы +/- → корректный value, parts без знака', () => {
+    expect(parseQuantity('6+5-1')).toMatchObject({ value: 10, parts: [6, 5, 1], ambiguous: false });
+  });
+
+  it('несколько «=» (опечатка) → ambiguous', () => {
+    expect(parseQuantity('2+1=3=4')).toMatchObject({ value: 4, ambiguous: true });
   });
 
   it('единицы/мусор → ambiguous, лучшее усилие по числу', () => {

@@ -5,7 +5,7 @@ const CIRCLED: Record<string, number> = {
   '⑪': 11, '⑫': 12, '⑬': 13, '⑭': 14, '⑮': 15, '⑯': 16, '⑰': 17, '⑱': 18, '⑲': 19, '⑳': 20,
 };
 
-export function parseQuantity(input: string): ParsedQuantity {
+export function parseQuantity(input: string | null | undefined): ParsedQuantity {
   const raw = input ?? '';
   const trimmed = raw.trim();
 
@@ -30,6 +30,11 @@ export function parseQuantity(input: string): ParsedQuantity {
   if (eq) {
     stated = parseInt(eq[1], 10);
     s = s.slice(0, eq.index).trim();
+    // несколько «=» (опечатка/мусор) → структуре не доверяем, на ручную проверку
+    if (s.includes('=')) {
+      const nums = (s.match(/\d+/g) ?? []).map((n) => parseInt(n, 10));
+      return { value: stated, raw, parts: nums, ambiguous: true };
+    }
   }
 
   // строка должна быть арифметикой из чисел и +/-
@@ -40,6 +45,7 @@ export function parseQuantity(input: string): ParsedQuantity {
     return { value, raw, parts: nums, ambiguous: true };
   }
 
+  // isPureExpr гарантирует непустое совпадение (минимум одна цифра)
   const tokens = s.match(/\d+|[+\-]/g)!;
   let acc = parseInt(tokens[0], 10);
   const parts = [acc];
