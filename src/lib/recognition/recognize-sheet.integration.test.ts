@@ -5,7 +5,7 @@ import { recognizeSheet } from './recognize-sheet';
 import type { CatalogEntry } from './match-product';
 
 const FIXTURE = join(__dirname, '__fixtures__', 'pies-sheet.jpg');
-const hasKey = !!process.env.ANTHROPIC_API_KEY;
+const hasKey = !!process.env.OPENROUTER_API_KEY;
 const hasFixture = existsSync(FIXTURE);
 
 const catalog: CatalogEntry[] = [

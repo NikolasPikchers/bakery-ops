@@ -4,10 +4,14 @@ import type { CatalogEntry } from './match-product';
 
 const catalog: CatalogEntry[] = [{ id: 'p2', name: 'Пицца открытая' }];
 
-function stubClient(parsedOutput: unknown): RecognitionClient {
+// Стаб OpenAI-совместимого клиента: возвращает content (как модель — строкой JSON).
+function stubClient(content: unknown): RecognitionClient {
+  const text = typeof content === 'string' ? content : JSON.stringify(content);
   return {
-    messages: {
-      parse: async () => ({ parsed_output: parsedOutput }),
+    chat: {
+      completions: {
+        create: async () => ({ choices: [{ message: { content: text } }] }),
+      },
     },
   };
 }
@@ -36,6 +40,18 @@ describe('recognizeSheet (стаб клиента)', () => {
     expect(res.rows[0].matchedProductId).toBe('p2');
     expect(res.rows[0].cells[0].prihod.value).toBe(42);
     expect(res.rows[0].cells[0].ostatok.value).toBe(1);
+  });
+
+  it('терпит markdown-ограждения вокруг JSON', async () => {
+    const client = stubClient(
+      '```json\n{"pointHint":null,"sheetType":"pies","dates":["2026-06-06"],"rows":[],"unknownLines":[],"warnings":[]}\n```',
+    );
+    const res = await recognizeSheet(
+      { image: { kind: 'base64', mediaType: 'image/jpeg', data: 'AAAA' }, catalog, sheetType: 'pies' },
+      client,
+    );
+    expect(res.sheetType).toBe('pies');
+    expect(res.rows).toEqual([]);
   });
 
   it('бросает, если модель вернула структуру не по схеме', async () => {

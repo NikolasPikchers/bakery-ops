@@ -1,5 +1,4 @@
-import Anthropic from '@anthropic-ai/sdk';
-import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod';
+import OpenAI from 'openai';
 import { RawRecognitionSchema, type RecognitionResult } from './schema';
 import { buildRecognitionPrompt } from './prompt';
 import { normalizeRecognition } from './normalize';
@@ -16,39 +15,76 @@ export type RecognizeSheetInput = {
   sheetType: SheetType;
 };
 
-/** Минимальный контракт клиента, который нам нужен (для инъекции стаба в тестах). */
+/**
+ * Минимальный контракт клиента (OpenAI-совместимый, как OpenRouter) — для инъекции стаба в тестах.
+ */
 export type RecognitionClient = {
-  messages: { parse: (args: unknown) => Promise<{ parsed_output: unknown }> };
+  chat: {
+    completions: {
+      create: (args: unknown) => Promise<{ choices: Array<{ message: { content: string | null } }> }>;
+    };
+  };
 };
 
-const MODEL = 'claude-opus-4-8';
+// Распознавание идёт через OpenRouter (OpenAI-совместимый API). Модель — vision.
+const MODEL = 'google/gemini-2.5-flash';
+const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
 
-function imageBlock(image: ImageInput) {
-  if (image.kind === 'base64') {
-    return {
-      type: 'image' as const,
-      source: { type: 'base64' as const, media_type: image.mediaType, data: image.data },
-    };
-  }
-  return { type: 'image' as const, source: { type: 'url' as const, url: image.url } };
+// Точная форма JSON для надёжности на любом провайдере (модель транскрибирует, не считает).
+const JSON_SHAPE = [
+  'Ответь ТОЛЬКО валидным JSON (без markdown-ограждений и текста вокруг) строго такой структуры:',
+  '{',
+  '  "pointHint": string|null,',
+  '  "sheetType": "pies"|"desserts"|"confectionery_freeform",',
+  '  "dates": ["YYYY-MM-DD", ...],',
+  '  "rows": [{ "productName": string, "cells": [{ "date": "YYYY-MM-DD", "prihod": string|null, "ostatok": string|null, "spisanie": string|null }] }],',
+  '  "unknownLines": [{ "rawText": string, "note": string|null }],',
+  '  "warnings": [string]',
+  '}',
+].join('\n');
+
+function imageUrl(image: ImageInput): string {
+  return image.kind === 'base64' ? `data:${image.mediaType};base64,${image.data}` : image.url;
+}
+
+function defaultClient(): RecognitionClient {
+  return new OpenAI({
+    baseURL: OPENROUTER_BASE_URL,
+    apiKey: process.env.OPENROUTER_API_KEY,
+  }) as unknown as RecognitionClient;
+}
+
+function stripFences(s: string): string {
+  return s
+    .replace(/^\s*```(?:json)?\s*/i, '')
+    .replace(/\s*```\s*$/i, '')
+    .trim();
 }
 
 export async function recognizeSheet(
   input: RecognizeSheetInput,
-  client: RecognitionClient = new Anthropic() as unknown as RecognitionClient,
+  client: RecognitionClient = defaultClient(),
 ): Promise<RecognitionResult> {
-  const prompt = buildRecognitionPrompt(input.catalog, input.sheetType);
-  const response = await client.messages.parse({
+  const prompt = `${buildRecognitionPrompt(input.catalog, input.sheetType)}\n\n${JSON_SHAPE}`;
+
+  const response = await client.chat.completions.create({
     model: MODEL,
-    max_tokens: 16000,
-    thinking: { type: 'adaptive' },
-    output_config: { format: zodOutputFormat(RawRecognitionSchema) },
+    response_format: { type: 'json_object' },
     messages: [
-      { role: 'user', content: [imageBlock(input.image), { type: 'text', text: prompt }] },
+      {
+        role: 'user',
+        content: [
+          { type: 'image_url', image_url: { url: imageUrl(input.image) } },
+          { type: 'text', text: prompt },
+        ],
+      },
     ],
   });
-  // Повторная валидация — страховка: при refusal / max_tokens parsed_output = null,
-  // тогда тут бросается понятная ZodError вместо тихого мусора ниже.
-  const raw = RawRecognitionSchema.parse(response.parsed_output);
+
+  const content = response.choices[0]?.message?.content;
+  if (!content) throw new Error('Recognition: empty response from model');
+
+  // zod-валидация — страховка: при кривом ответе бросает понятную ошибку.
+  const raw = RawRecognitionSchema.parse(JSON.parse(stripFences(content)));
   return normalizeRecognition(raw, input.catalog);
 }
