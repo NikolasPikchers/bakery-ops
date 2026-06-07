@@ -20,6 +20,10 @@ export function computeAging(
   asOf: string,
   shelfLifeDays = 5,
 ): AgingResult {
+  // currentOstatok и lastPrihodDate берутся из последних НЕпустых строк независимо:
+  // если в самой свежей строке остаток не записан, берём последний известный остаток,
+  // а дату прихода — последнюю с приходом > 0 (это может быть другая строка — так и задумано:
+  // используем лучшие доступные данные при нерегулярном заполнении).
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
   const desc = [...sorted].reverse();
   const currentOstatok = desc.find((m) => m.ostatok != null)?.ostatok ?? null;

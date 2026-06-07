@@ -41,6 +41,11 @@ describe('parseQuantity', () => {
     expect(parseQuantity('6+3 ⑤')).toMatchObject({ value: 5, parts: [6, 3], ambiguous: true });
   });
 
+  it('одиночный итог без выражения → не ambiguous', () => {
+    expect(parseQuantity('⑨')).toMatchObject({ value: 9, parts: [], ambiguous: false });
+    expect(parseQuantity('=12')).toMatchObject({ value: 12, parts: [], ambiguous: false });
+  });
+
   it('смешанные операторы +/- → корректный value, parts без знака', () => {
     expect(parseQuantity('6+5-1')).toMatchObject({ value: 10, parts: [6, 5, 1], ambiguous: false });
   });

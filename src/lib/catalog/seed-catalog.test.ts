@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { SEED_CATALOG, type SeedProduct } from './seed-catalog';
+import { SEED_CATALOG } from './seed-catalog';
 
 describe('SEED_CATALOG', () => {
   it('не пустой', () => {

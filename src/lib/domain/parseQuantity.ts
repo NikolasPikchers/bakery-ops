@@ -41,7 +41,12 @@ export function parseQuantity(input: string | null | undefined): ParsedQuantity 
   const isPureExpr = /^\d+(\s*[+\-]\s*\d+)*$/.test(s);
   if (!isPureExpr) {
     const nums = (s.match(/\d+/g) ?? []).map((n) => parseInt(n, 10));
-    const value = stated ?? circled ?? (nums.length ? nums[0] : null);
+    const explicit = stated ?? circled;
+    // одиночный итог без выражения (кружок ⑨ или «=N») — доверяем, не ambiguous
+    if (explicit != null && nums.length === 0) {
+      return { value: explicit, raw, parts: [], ambiguous: false };
+    }
+    const value = explicit ?? (nums.length ? nums[0] : null);
     return { value, raw, parts: nums, ambiguous: true };
   }
 
