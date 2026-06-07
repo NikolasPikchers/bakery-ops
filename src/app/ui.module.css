@@ -1,0 +1,25 @@
+.shell { max-width: 960px; margin: 0 auto; padding: 24px 20px; font-family: var(--font-geist-sans), system-ui, sans-serif; }
+.nav { display: flex; gap: 16px; align-items: center; padding: 12px 20px; border-bottom: 1px solid #eee; }
+.nav a { color: #111; text-decoration: none; font-weight: 600; }
+.spacer { flex: 1; }
+.card { max-width: 360px; margin: 64px auto; padding: 24px; border: 1px solid #eee; border-radius: 12px; }
+.field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+.field label { font-size: 13px; color: #555; }
+.field input, .field select { padding: 10px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; }
+.btn { padding: 10px 16px; border: 0; border-radius: 8px; background: #111; color: #fff; font-size: 15px; cursor: pointer; }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.btnGhost { background: #fff; color: #111; border: 1px solid #ccc; }
+.error { color: #b00020; font-size: 14px; margin: 8px 0; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.badgeReview { background: #fff3cd; color: #7a5b00; }
+.badgeConfirmed { background: #d4edda; color: #155724; }
+.badgeRecognized { background: #e2e3ff; color: #2a2a7a; }
+.table { border-collapse: collapse; width: 100%; font-size: 14px; }
+.table th, .table td { border: 1px solid #e3e3e3; padding: 6px 8px; text-align: center; }
+.table th { background: #fafafa; }
+.cellOstatok { background: #fffbe6; }
+.cellLow { outline: 2px solid #ffb300; outline-offset: -2px; }
+.cellInput { width: 56px; padding: 4px; text-align: center; border: 1px solid #ccc; border-radius: 6px; }
+.raw { display: block; font-size: 11px; color: #999; margin-top: 2px; min-height: 13px; }
+.rowName { text-align: left; font-weight: 600; white-space: nowrap; }
+.unmatched { color: #b00020; }
