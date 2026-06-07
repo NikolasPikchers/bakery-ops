@@ -24,6 +24,8 @@ describe.skipIf(!hasDb)('persistRecognition (реальная БД)', () => {
     await prisma.movement.deleteMany({ where: { pointId: 'pt-test' } });
     await prisma.unknownLine.deleteMany({ where: { pointId: 'pt-test' } });
     await prisma.sheet.deleteMany({ where: { imageHash: hash } });
+    await prisma.product.deleteMany({ where: { id: 'pr-test' } });
+    await prisma.point.deleteMany({ where: { id: 'pt-test' } });
     await prisma.$disconnect();
   }, 30_000);
 
