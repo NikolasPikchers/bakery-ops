@@ -31,4 +31,10 @@ describe('computeSold', () => {
     expect(computeSold({ prevOstatok: 1, prihod: 0, spisanie: 0, ostatok: 5 }))
       .toMatchObject({ sold: -4, anomaly: true });
   });
+
+  it('ноль продано — не anomaly', () => {
+    const r = computeSold({ prevOstatok: 0, prihod: 5, spisanie: 0, ostatok: 5 });
+    expect(r.sold).toBe(0);
+    expect(r.anomaly).toBeUndefined();
+  });
 });

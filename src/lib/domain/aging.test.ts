@@ -41,4 +41,17 @@ describe('computeAging', () => {
     const h = hist([['2026-06-04', 3, 3]]);
     expect(computeAging(h, '2026-06-07', 2)).toMatchObject({ ageDays: 3, stale: true });
   });
+
+  it('остаток > 0, но прихода в истории нет → возраст null, не stale', () => {
+    const h = hist([
+      ['2026-06-01', null, 3],
+      ['2026-06-04', null, 3],
+    ]);
+    expect(computeAging(h, '2026-06-07', 5)).toMatchObject({
+      currentOstatok: 3,
+      lastPrihodDate: null,
+      ageDays: null,
+      stale: false,
+    });
+  });
 });

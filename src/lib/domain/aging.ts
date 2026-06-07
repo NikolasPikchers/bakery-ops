@@ -21,18 +21,22 @@ export function computeAging(
   shelfLifeDays = 5,
 ): AgingResult {
   const sorted = [...history].sort((a, b) => a.date.localeCompare(b.date));
-  const lastWithOstatok = [...sorted].reverse().find((m) => m.ostatok != null);
-  const currentOstatok = lastWithOstatok?.ostatok ?? null;
+  const desc = [...sorted].reverse();
+  const currentOstatok = desc.find((m) => m.ostatok != null)?.ostatok ?? null;
 
   if (currentOstatok == null || currentOstatok <= 0) {
     return { currentOstatok, lastPrihodDate: null, ageDays: null, stale: false };
   }
 
-  const lastPrihod = [...sorted].reverse().find((m) => (m.prihod ?? 0) > 0) ?? null;
-  const lastPrihodDate = lastPrihod?.date ?? null;
-  const baseDate = lastPrihodDate ?? sorted[0]?.date ?? null;
-  const ageDays = baseDate ? daysBetween(baseDate, asOf) : null;
-  const stale = ageDays != null && ageDays > shelfLifeDays;
+  // Возраст определён только относительно последнего прихода (спека §9).
+  // Нет прихода в истории → возраст неизвестен, ничего не флагуем (без ложных алертов).
+  const lastPrihodDate = desc.find((m) => (m.prihod ?? 0) > 0)?.date ?? null;
+  if (lastPrihodDate == null) {
+    return { currentOstatok, lastPrihodDate: null, ageDays: null, stale: false };
+  }
+
+  const ageDays = daysBetween(lastPrihodDate, asOf);
+  const stale = ageDays > shelfLifeDays;
 
   return { currentOstatok, lastPrihodDate, ageDays, stale };
 }
