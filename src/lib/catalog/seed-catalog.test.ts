@@ -27,4 +27,10 @@ describe('SEED_CATALOG', () => {
     expect(names).toContain('Самса');
     expect(names).toContain('Пицца открытая');
   });
+
+  it('у пирогов/выпечки нет срока годности (aging — только десерты)', () => {
+    const pies = SEED_CATALOG.filter((p) => p.sheetType === 'pies');
+    expect(pies.length).toBeGreaterThan(0);
+    for (const p of pies) expect(p.shelfLifeDays).toBeUndefined();
+  });
 });
