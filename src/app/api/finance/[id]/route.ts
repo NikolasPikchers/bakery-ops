@@ -1,3 +1,4 @@
+import { Prisma } from '@prisma/client';
 import { auth } from '@/auth';
 import { getPrisma } from '@/lib/db/client';
 import { deleteRevenue, deleteExpense } from '@/lib/db/finance-repo';
@@ -10,9 +11,20 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
   const { id } = await params;
   const type = new URL(req.url).searchParams.get('type');
+  if (type !== 'revenue' && type !== 'expense') {
+    return Response.json({ error: 'Укажите ?type=revenue|expense' }, { status: 400 });
+  }
+
   const prisma = getPrisma();
-  if (type === 'revenue') await deleteRevenue(prisma, id);
-  else if (type === 'expense') await deleteExpense(prisma, id);
-  else return Response.json({ error: 'Укажите ?type=revenue|expense' }, { status: 400 });
+  try {
+    if (type === 'revenue') await deleteRevenue(prisma, id);
+    else await deleteExpense(prisma, id);
+  } catch (e) {
+    // P2025 — записи нет (двойное удаление/неверный type); отдаём 404, а не 500 со стектрейсом Prisma.
+    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2025') {
+      return Response.json({ error: 'Запись не найдена' }, { status: 404 });
+    }
+    throw e;
+  }
   return Response.json({ ok: true });
 }
