@@ -21,6 +21,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
         {session && (
           <nav className={styles.nav}>
             <Link href="/">Остатки</Link>
+            <Link href="/finance">Финансы</Link>
             <Link href="/upload">Загрузить лист</Link>
             <span className={styles.spacer} />
             <form

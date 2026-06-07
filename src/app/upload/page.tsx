@@ -41,8 +41,8 @@ export default function UploadPage() {
         <div className={styles.field}>
           <label>Точка</label>
           <select value={pointId} onChange={(e) => setPointId(e.target.value)}>
-            <option value="point-1">Точка 1</option>
-            <option value="point-2">Точка 2</option>
+            <option value="point-1">Плюшкино</option>
+            <option value="point-2">Корица</option>
           </select>
         </div>
         <div className={styles.field}>
