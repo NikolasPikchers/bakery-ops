@@ -1,18 +1,19 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { SEED_CATALOG } from '../src/lib/catalog/seed-catalog';
+import { POINTS } from '../src/lib/domain/points';
 
 const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
 const prisma = new PrismaClient({ adapter });
 
 async function main() {
   // Точки
-  const points = [
-    { id: 'point-1', name: 'Точка 1' },
-    { id: 'point-2', name: 'Точка 2' },
-  ];
-  for (const p of points) {
-    await prisma.point.upsert({ where: { name: p.name }, update: {}, create: p });
+  for (const p of POINTS) {
+    await prisma.point.upsert({
+      where: { id: p.id },
+      update: { name: p.name },
+      create: { id: p.id, name: p.name },
+    });
   }
 
   // Каталог SKU
