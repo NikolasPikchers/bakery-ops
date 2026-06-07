@@ -24,11 +24,16 @@ export async function persistRecognition(
 
   // Атомарно: иначе при падении между записями Sheet остаётся без движений,
   // а повтор дедупится по imageHash и лист «залипает» недописанным.
-  await prisma.$transaction(async (tx) => {
-    await createSheet(tx, records.sheet);
-    await upsertMovements(tx, movements);
-    await createUnknownLines(tx, records.unknownLines);
-  });
+  // Дефолтный interactive-таймаут Prisma — 5с; лист с 18–28 SKU × N дат = десятки
+  // последовательных upsert по serverless-Neon легко превышают его (P2028). Поднимаем.
+  await prisma.$transaction(
+    async (tx) => {
+      await createSheet(tx, records.sheet);
+      await upsertMovements(tx, movements);
+      await createUnknownLines(tx, records.unknownLines);
+    },
+    { maxWait: 15_000, timeout: 60_000 },
+  );
 
   return { deduped: false, sheetId: records.sheet.id };
 }
