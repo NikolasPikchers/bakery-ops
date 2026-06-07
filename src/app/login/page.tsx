@@ -8,7 +8,7 @@ import styles from '../ui.module.css';
 function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
-  const callbackUrl = params.get('callbackUrl') ?? '/';
+  const rawCallback = params.get('callbackUrl') ?? '/';
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
@@ -23,7 +23,16 @@ function LoginForm() {
       setError('Неверный пароль');
       return;
     }
-    router.push(callbackUrl);
+    // Редиректим только в пределах своего origin (middleware кладёт абсолютный URL);
+    // чужой/протокол-относительный callbackUrl отбрасываем — защита от open redirect.
+    let dest = '/';
+    try {
+      const u = new URL(rawCallback, window.location.origin);
+      if (u.origin === window.location.origin) dest = u.pathname + u.search;
+    } catch {
+      dest = '/';
+    }
+    router.push(dest);
     router.refresh();
   }
 
