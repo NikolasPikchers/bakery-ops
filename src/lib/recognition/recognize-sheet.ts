@@ -47,6 +47,8 @@ export async function recognizeSheet(
       { role: 'user', content: [imageBlock(input.image), { type: 'text', text: prompt }] },
     ],
   });
+  // Повторная валидация — страховка: при refusal / max_tokens parsed_output = null,
+  // тогда тут бросается понятная ZodError вместо тихого мусора ниже.
   const raw = RawRecognitionSchema.parse(response.parsed_output);
   return normalizeRecognition(raw, input.catalog);
 }

@@ -7,7 +7,7 @@ const catalog: CatalogEntry[] = [{ id: 'p2', name: 'Пицца открытая'
 function stubClient(parsedOutput: unknown): RecognitionClient {
   return {
     messages: {
-      parse: async (_args: unknown) => ({ parsed_output: parsedOutput }),
+      parse: async () => ({ parsed_output: parsedOutput }),
     },
   };
 }
