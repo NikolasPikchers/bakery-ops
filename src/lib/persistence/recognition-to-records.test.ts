@@ -77,4 +77,22 @@ describe('recognitionToRecords', () => {
     };
     expect(recognitionToRecords(clean, ctx).sheet.status).toBe('recognized');
   });
+
+  it('ячейки в обратном порядке дат → сортируются, soldCalc цепочкой верный', () => {
+    const reversed: RecognitionResult = {
+      pointHint: null, sheetType: 'pies', dates: ['2026-06-05', '2026-06-06'],
+      rows: [{
+        productName: 'Пицца открытая', matchedProductId: 'p16', matchConfidence: 1,
+        cells: [
+          { date: '2026-06-06', prihod: q(42, '24+12+6'), ostatok: q(1, '4-3'), spisanie: q(null, '') },
+          { date: '2026-06-05', prihod: q(34, '24+10'), ostatok: q(5, '5'), spisanie: q(null, '') },
+        ],
+      }],
+      unknownLines: [], warnings: [],
+    };
+    const recs = recognitionToRecords(reversed, ctx);
+    expect(recs.movements.map((m) => m.date)).toEqual(['2026-06-05', '2026-06-06']);
+    expect(recs.movements[0].soldCalc).toBeNull();
+    expect(recs.movements[1].soldCalc).toBe(46);
+  });
 });

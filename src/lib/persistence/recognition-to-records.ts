@@ -61,9 +61,12 @@ function rowHasAmbiguousCell(row: RecognizedRow): boolean {
 
 function movementsForRow(row: RecognizedRow, ctx: PersistContext): MovementRecord[] {
   if (row.matchedProductId === null) return [];
+  // Сортируем по дате, чтобы prevOstatok корректно цепочкой шёл вперёд независимо от порядка строк модели.
   const cells = [...row.cells].sort((a, b) => a.date.localeCompare(b.date));
   return cells.map((cell, i) => {
     const prevOstatok = i > 0 ? cells[i - 1].ostatok.value : null;
+    // sold может быть отрицательным (computeSold.anomaly) — у Movement нет колонки anomaly,
+    // поэтому аномалии выявляются downstream запросом soldCalc < 0 (учесть в 3b/дашборде).
     const { sold } = computeSold({
       prevOstatok,
       prihod: cell.prihod.value,
@@ -72,6 +75,7 @@ function movementsForRow(row: RecognizedRow, ctx: PersistContext): MovementRecor
     });
     return {
       pointId: ctx.pointId,
+      // matchedProductId !== null гарантировано early return выше.
       productId: row.matchedProductId as string,
       date: cell.date,
       prihod: cell.prihod.value,

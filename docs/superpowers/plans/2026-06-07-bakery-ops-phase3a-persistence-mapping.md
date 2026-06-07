@@ -325,6 +325,7 @@ git commit -m "feat(persistence): recognitionToRecords — маппинг в She
 - **Кросс-листовой `soldCalc`:** здесь считается остаток-в-пределах-листа. Перенос «вчерашнего остатка из БД» (когда новый лист продолжает предыдущий день) — задача репозитория в 3b (подтянуть прошлый `Movement.ostatok` как `prevOstatok`).
 - **Несопоставленные строки** (`matchedProductId === null`) в `Movement` не пишем — ревью-UI (3c) сопоставляет их вручную из `sheet.rawRecognition`, после чего движения досоздаются.
 - **Конвертация дат:** `MovementRecord.date` / `SheetRecord.dates` — ISO-строки `YYYY-MM-DD`; в Prisma `@db.Date` репозиторий передаёт `new Date(date)` на границе записи.
+- **Аномалии:** `soldCalc` может быть отрицательным (computeSold.anomaly). У `Movement` нет колонки anomaly — выявлять запросом `soldCalc < 0` в 3b/дашборде.
 - **Инфра-решения для 3b** (поднять перед стартом): Postgres (Neon через Vercel?), хранилище фото (Vercel Blob?), переиспользовать существующую Telegram-инфраструктуру или новый бот, объём NextAuth.
 
 ## Дальнейшие планы
