@@ -30,4 +30,11 @@ describe('matchProductToCatalog', () => {
   it('нет в каталоге → productId null', () => {
     expect(matchProductToCatalog('Шаурма', catalog)).toMatchObject({ productId: null });
   });
+  it('пустая/пробельная строка → null, confidence 0 (не липнет к первой позиции)', () => {
+    expect(matchProductToCatalog('   ', catalog)).toMatchObject({ productId: null, confidence: 0 });
+    expect(matchProductToCatalog('', catalog)).toMatchObject({ productId: null, confidence: 0 });
+  });
+  it('частичное совпадение ниже порога → confidence 0 (без утечки лучшего кандидата)', () => {
+    expect(matchProductToCatalog('Сосиска жареная', catalog)).toMatchObject({ productId: null, confidence: 0 });
+  });
 });

@@ -34,6 +34,7 @@ export function matchProductToCatalog(
   threshold = 0.5,
 ): ProductMatch {
   const target = normalizeName(rawName);
+  if (target === '') return { productId: null, confidence: 0 };
 
   for (const p of catalog) {
     const variants = [p.name, ...(p.aliases ?? [])].map(normalizeName);
@@ -49,5 +50,6 @@ export function matchProductToCatalog(
     }
     if (score > best.confidence) best = { productId: p.id, confidence: score };
   }
-  return best.confidence >= threshold ? best : { productId: null, confidence: best.confidence };
+  // Ниже порога — это НЕ совпадение: confidence 0, чтобы не вводить в заблуждение downstream.
+  return best.confidence >= threshold ? best : { productId: null, confidence: 0 };
 }
