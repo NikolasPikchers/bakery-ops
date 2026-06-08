@@ -36,6 +36,8 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
   const q = (m: string) => `/breakdown?month=${m}`;
   const t = v.totals;
   const confPct = t.total > 0 ? Math.round((t.confectionery / t.total) * 100) : 0;
+  const n = v.days.length;
+  const avg = (x: number) => (n ? x / n : 0);
 
   return (
     <div style={{ padding: '24px 28px' }}>
@@ -63,6 +65,12 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
             <Kpi label="Кондитерка" value={rub(t.confectionery)} color={CONF} sub={`${confPct}% выручки`} />
             <Kpi label="Пироги + прочее" value={rub(t.other)} color={OTHER} sub={`${100 - confPct}% выручки`} />
             <Kpi label="Всего за месяц" value={rub(t.total)} />
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 16, marginBottom: 18 }}>
+            <Kpi label="Кондитерка / день" value={rub(avg(t.confectionery))} color={CONF} sub={`в среднем за ${n} дн`} />
+            <Kpi label="Пироги+прочее / день" value={rub(avg(t.other))} color={OTHER} sub={`в среднем за ${n} дн`} />
+            <Kpi label="Всего / день" value={rub(avg(t.total))} sub={`в среднем за ${n} дн`} />
           </div>
 
           <div style={{ ...card, marginBottom: 18 }}>
