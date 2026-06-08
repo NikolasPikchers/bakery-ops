@@ -144,9 +144,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
             <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', minWidth: 110, textAlign: 'center' }}>{monthLabel(month)}</span>
             <Link href={q(point, nextMonth(month))} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 17 }}>›</Link>
           </div>
-          <Link href="/finance" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--profit)', color: '#fff', padding: '11px 18px', borderRadius: 12, fontSize: 14, fontWeight: 700 }}>
+          <Link href="/revenue" style={{ display: 'flex', alignItems: 'center', gap: 8, background: 'var(--profit)', color: '#fff', padding: '11px 18px', borderRadius: 12, fontSize: 14, fontWeight: 700 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 5v14M5 12h14" strokeLinecap="round" /></svg>
-            Операция
+            Выручка
           </Link>
         </div>
       </div>
