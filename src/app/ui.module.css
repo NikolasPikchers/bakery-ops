@@ -23,3 +23,33 @@
 .raw { display: block; font-size: 11px; color: #999; margin-top: 2px; min-height: 13px; }
 .rowName { text-align: left; font-weight: 600; white-space: nowrap; }
 .unmatched { color: #b00020; }
+
+/* dashboard */
+.logoImg { height: 30px; width: auto; display: block; }
+.logoText { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 9px; background: var(--brand); color: #fff; font-style: italic; font-weight: 700; font-size: 10px; line-height: .95; text-align: center; }
+.filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin: 12px 0 20px; }
+.pill { font-size: 13px; padding: 5px 12px; border-radius: 999px; background: #eef2f0; color: #3a4a42; text-decoration: none; }
+.pillOn { background: var(--brand); color: #fff; }
+.month { font-size: 13px; padding: 5px 10px; border: 1px solid #d7e0db; border-radius: 8px; color: #3a4a42; text-decoration: none; }
+.kpis { display: grid; grid-template-columns: 1.3fr 1fr 1fr 1fr; gap: 12px; }
+.kpi { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.kpiLead { background: var(--profit); border: 0; color: #fff; }
+.kpiLab { font-size: 11px; text-transform: uppercase; letter-spacing: .4px; color: var(--muted); }
+.kpiLead .kpiLab { color: #cfeBdc; }
+.kpiVal { font-size: 24px; font-weight: 800; margin-top: 4px; }
+.kpiVal.sm { font-size: 19px; }
+.delta { font-size: 11px; font-weight: 700; margin-top: 3px; color: var(--muted); }
+.up { color: #2e7d5b; } .down { color: #c0392b; }
+.kpiLead .delta { color: #bdf0d3; }
+.grid2 { display: grid; grid-template-columns: 1.7fr 1fr; gap: 12px; margin-top: 12px; }
+.panel { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.panelTtl { font-size: 13px; font-weight: 700; margin-bottom: 10px; }
+.bars { display: flex; align-items: flex-end; gap: 4px; height: 140px; }
+.bars > div { flex: 1; min-width: 3px; border-radius: 4px 4px 0 0; background: #9fccb2; }
+.donut { width: 130px; height: 130px; border-radius: 50%; margin: 4px auto 10px; }
+.legend { font-size: 12px; display: flex; flex-direction: column; gap: 4px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 7px; }
+.empty { color: var(--muted); font-size: 14px; }
+.stale { background: #fff6e6; }
+.age { color: #b9772a; font-weight: 700; }
+.num { text-align: right; font-variant-numeric: tabular-nums; }
