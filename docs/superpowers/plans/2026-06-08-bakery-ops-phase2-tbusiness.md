@@ -10,6 +10,15 @@
 
 **Spec:** `docs/superpowers/specs/2026-06-08-bakery-ops-phase2-tbusiness-design.md`
 
+> ## ⚠️ Пивот при реализации: API → импорт файла выписки
+> T-Bank блокирует иностранные IP, Mac Mini выходит через зарубежный VPN → API недостижим.
+> Реализован **импорт CSV-выписки** вместо API. Фактическая структура:
+> - Task 1 (миграция) — выполнена как есть.
+> - Вместо Task 4 (`client.ts`) → `src/lib/tbank/parse-statement.ts` (+тест).
+> - Вместо Task 7–8 (коллектор/launchd) → `scripts/import-statement.mts` (`--dry`, `.zip`/`.csv`) + `docs/tbusiness-import.md`.
+> - categorize расширен под реальные данные: исключение переводов себе, карта→продукты, ИНН поставщиков.
+> - Tasks 2/3/5/6 (типы, categorize, репозиторий, оркестратор) — как в плане.
+
 ---
 
 ## Файловая структура

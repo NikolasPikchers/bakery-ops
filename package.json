@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "import:statement": "tsx scripts/import-statement.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
