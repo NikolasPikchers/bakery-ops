@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scopeForPoint, loadCatalog } from './catalog-repo';
+import { scopeForPoint, loadCatalog, loadCatalogForPoint } from './catalog-repo';
 
 describe('scopeForPoint', () => {
   it('maps seeded point ids to scope keys', () => {
@@ -35,6 +35,34 @@ describe('loadCatalog', () => {
     expect(out).toEqual([
       { id: 'a', name: 'Самса', aliases: [] },
       { id: 'b', name: 'Пирожок с капустой', aliases: ['Пирожок (беккен) с капустой'] },
+    ]);
+  });
+});
+
+describe('loadCatalogForPoint', () => {
+  it('queries active products by scope only (BOTH sheet types) — для смешанных листов', async () => {
+    let received: unknown;
+    const fakePrisma = {
+      product: {
+        findMany: async (args: unknown) => {
+          received = args;
+          return [
+            { id: 'a', name: 'Самса', aliases: [] },
+            { id: 'c', name: 'Круассан Вишня', aliases: [] },
+          ];
+        },
+      },
+    };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const out = await loadCatalogForPoint(fakePrisma as any, 'point-1');
+    expect(received).toEqual({
+      where: { active: true, pointScope: { in: ['both', 'point1'] } },
+      select: { id: true, name: true, aliases: true },
+      orderBy: { name: 'asc' },
+    });
+    expect(out).toEqual([
+      { id: 'a', name: 'Самса', aliases: [] },
+      { id: 'c', name: 'Круассан Вишня', aliases: [] },
     ]);
   });
 });

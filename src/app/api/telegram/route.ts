@@ -1,5 +1,5 @@
 import { getPrisma } from '@/lib/db/client';
-import { loadCatalog } from '@/lib/db/catalog-repo';
+import { loadCatalogForPoint } from '@/lib/db/catalog-repo';
 import { ingestSheetPhoto } from '@/lib/ingest/ingest-sheet';
 import { buildIngestDeps } from '@/lib/ingest/deps';
 import { pointName } from '@/lib/domain/points';
@@ -47,7 +47,8 @@ export async function POST(req: Request) {
 
   try {
     const bytes = await getFileBytes(msg.photoFileId);
-    const catalog = await loadCatalog(getPrisma(), parsed.sheetType, parsed.pointId);
+    // Полный каталог точки (оба типа) — лист может смешивать пироги и кондитерку/десерты.
+    const catalog = await loadCatalogForPoint(getPrisma(), parsed.pointId);
     const result = await ingestSheetPhoto(
       {
         bytes,

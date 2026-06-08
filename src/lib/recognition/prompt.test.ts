@@ -23,4 +23,9 @@ describe('buildRecognitionPrompt', () => {
     const p = buildRecognitionPrompt(catalog, 'pies');
     expect(p).toContain('unknownLines');
   });
+  it('указывает русский формат дат ДД.ММ (день первым) и ISO на выход', () => {
+    const p = buildRecognitionPrompt(catalog, 'pies');
+    expect(p).toMatch(/ДД\.ММ|день\.месяц/i);
+    expect(p).toContain('YYYY-MM-DD');
+  });
 });

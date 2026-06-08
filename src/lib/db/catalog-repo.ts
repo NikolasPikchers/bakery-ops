@@ -26,3 +26,21 @@ export async function loadCatalog(
   });
   return rows.map((r) => ({ id: r.id, name: r.name, aliases: r.aliases }));
 }
+
+/**
+ * Полный каталог точки (ОБА типа — пироги и десерты). Для распознавания «смешанных» листов
+ * (одна бумага Плюшкино = печатные пироги + от руки кондитерка/десерты): кандидатами должны быть
+ * все SKU точки, а не только sheetType листа.
+ */
+export async function loadCatalogForPoint(
+  prisma: CatalogClient,
+  pointId: string,
+): Promise<CatalogEntry[]> {
+  const scope = scopeForPoint(pointId);
+  const rows = await prisma.product.findMany({
+    where: { active: true, pointScope: { in: ['both', scope] } },
+    select: { id: true, name: true, aliases: true },
+    orderBy: { name: 'asc' },
+  });
+  return rows.map((r) => ({ id: r.id, name: r.name, aliases: r.aliases }));
+}
