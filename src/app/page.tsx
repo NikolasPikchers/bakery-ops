@@ -21,7 +21,7 @@ function pct(n: number | null): string {
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ point?: string; month?: string }> }) {
   const sp = await searchParams;
   const point: DashboardPoint = sp.point === 'point-1' || sp.point === 'point-2' ? sp.point : 'all';
-  const month = /^\d{4}-\d{2}$/.test(sp.month ?? '') ? (sp.month as string) : currentMonth(new Date());
+  const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? '') ? (sp.month as string) : currentMonth(new Date());
   const asOf = currentMonth(new Date()) === month ? new Date().toISOString().slice(0, 10) : `${month}-28`;
 
   const v = await loadDashboard(getPrisma(), { point, month, asOf });
