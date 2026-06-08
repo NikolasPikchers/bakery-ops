@@ -4,15 +4,15 @@ import { toDbDate } from './dates';
 type RevenueSrc = 'manual' | 'import' | 'iiko';
 type ExpenseSrc = 'manual' | 'import';
 
-export type RevenueInput = { pointId: string; date: string; amount: number; source: RevenueSrc; note?: string | null; createdBy?: string | null };
+export type RevenueInput = { pointId: string; date: string; amount: number; source: RevenueSrc; confectionery?: number | null; note?: string | null; createdBy?: string | null };
 export type ExpenseInput = { pointId: string; date: string; amount: number; category: string; source: ExpenseSrc; note?: string | null; createdBy?: string | null };
 
 export async function upsertRevenue(prisma: PrismaClient, r: RevenueInput) {
   const date = toDbDate(r.date);
   return prisma.revenue.upsert({
     where: { pointId_date: { pointId: r.pointId, date } },
-    create: { pointId: r.pointId, date, amount: r.amount, source: r.source, note: r.note ?? undefined, createdBy: r.createdBy ?? undefined },
-    update: { amount: r.amount, source: r.source, note: r.note ?? undefined },
+    create: { pointId: r.pointId, date, amount: r.amount, confectionery: r.confectionery ?? undefined, source: r.source, note: r.note ?? undefined, createdBy: r.createdBy ?? undefined },
+    update: { amount: r.amount, confectionery: r.confectionery ?? undefined, source: r.source, note: r.note ?? undefined },
   });
 }
 

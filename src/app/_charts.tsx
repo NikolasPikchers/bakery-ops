@@ -144,3 +144,37 @@ export function DayBars({ data, color = '#2563eb', height = 170 }: { data: { dat
     </div>
   );
 }
+
+/** Стэк-бары по дням: кондитерка (низ) + пироги/прочее (верх), подписи дней + тултип. */
+export function StackBars({
+  data,
+  height = 200,
+  confColor = '#e0a458',
+  otherColor = '#2563eb',
+}: {
+  data: { date: string; confectionery: number; other: number }[];
+  height?: number;
+  confColor?: string;
+  otherColor?: string;
+}) {
+  const max = Math.max(1, ...data.map((d) => d.confectionery + d.other));
+  return (
+    <div>
+      <div className={styles.stackBars} style={{ height }}>
+        {data.map((d, i) => (
+          <div key={i} className={styles.stackCol}>
+            <span className={styles.barTip}>{dayLabel(d.date)} · конд. {rub(d.confectionery)} · пироги+проч. {rub(d.other)} · всего {rub(d.confectionery + d.other)}</span>
+            <span className={styles.sseg} style={{ height: `${(d.confectionery / max) * 100}%`, background: confColor }} />
+            <span className={styles.sseg} style={{ height: `${(d.other / max) * 100}%`, background: otherColor }} />
+          </div>
+        ))}
+      </div>
+      <div className={styles.barAxis}>
+        {data.map((d, i) => {
+          const day = Number(d.date.slice(8, 10));
+          return <span key={i} className={styles.barAxisCell}>{day % 5 === 0 ? day : ''}</span>;
+        })}
+      </div>
+    </div>
+  );
+}

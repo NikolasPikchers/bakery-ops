@@ -2,7 +2,7 @@ import ExcelJS from 'exceljs';
 
 /** Сумма дневной выручки из xlsx-выгрузки iiko («Табличные данные»):
  *  Σ колонки «…по выручке» по строкам-блюдам (начинаются с «//» или «\»). */
-export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<{ total: number; positions: number }> {
+export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<{ total: number; confectionery: number; positions: number }> {
   const wb = new ExcelJS.Workbook();
   // Тип Buffer у exceljs расходится с @types/node — кастуем сигнатуру load к Uint8Array/ArrayBuffer.
   const load = wb.xlsx.load.bind(wb.xlsx) as (b: ArrayBuffer | Uint8Array) => Promise<unknown>;
@@ -16,6 +16,7 @@ export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<{ t
   });
 
   let total = 0;
+  let confectionery = 0; // кондитерка: строки с префиксом «\»
   let positions = 0;
   ws.eachRow((row, rowNum) => {
     if (rowNum === 1) return;
@@ -26,9 +27,11 @@ export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<{ t
     if (Number.isFinite(v)) {
       total += v;
       positions++;
+      if (name.startsWith('\\')) confectionery += v;
     }
   });
-  return { total: Math.round(total * 100) / 100, positions };
+  const round2 = (n: number) => Math.round(n * 100) / 100;
+  return { total: round2(total), confectionery: round2(confectionery), positions };
 }
 
 const FILENAME_DATE = /_(\d{2})\.(\d{2})\.(\d{2})\.xlsx$/i;

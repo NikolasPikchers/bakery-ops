@@ -19,7 +19,7 @@ describe('parseSalesXlsx', () => {
       ['Итого', 10, 9999], // подпись «Итого» — исключаем
       [null, 419, 1210], // grand total с пустым «Блюдо» — исключаем
     ]);
-    expect(await parseSalesXlsx(buf)).toEqual({ total: 1210, positions: 3 });
+    expect(await parseSalesXlsx(buf)).toEqual({ total: 1210, confectionery: 300, positions: 3 });
   });
 });
 

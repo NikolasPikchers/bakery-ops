@@ -140,13 +140,14 @@ model UnknownLine {
 }
 
 model Revenue {
-  id        String        @id @default(cuid())
-  pointId   String
-  point     Point         @relation(fields: [pointId], references: [id])
-  date      DateTime      @db.Date
-  amount    Decimal       @db.Decimal(12, 2)
-  source    RevenueSource @default(manual)
-  note      String?
+  id            String        @id @default(cuid())
+  pointId       String
+  point         Point         @relation(fields: [pointId], references: [id])
+  date          DateTime      @db.Date
+  amount        Decimal       @db.Decimal(12, 2)
+  confectionery Decimal?      @db.Decimal(12, 2)
+  source        RevenueSource @default(manual)
+  note          String?
   createdBy String?
   createdAt DateTime      @default(now())
   updatedAt DateTime      @updatedAt

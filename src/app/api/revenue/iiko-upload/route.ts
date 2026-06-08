@@ -28,12 +28,12 @@ export async function POST(req: Request) {
       continue;
     }
     try {
-      const { total } = await parseSalesXlsx(await f.arrayBuffer());
+      const { total, confectionery } = await parseSalesXlsx(await f.arrayBuffer());
       if (!(total > 0)) {
         results.push({ file: f.name, date, amount: 0, status: 'выручка 0 — пропущено' });
         continue;
       }
-      const r = await upsertImportedRevenue(prisma, { pointId: POINT, date, amount: total, source: 'iiko' });
+      const r = await upsertImportedRevenue(prisma, { pointId: POINT, date, amount: total, confectionery, source: 'iiko' });
       if (r === 'imported') imported++;
       else updated++;
       results.push({ file: f.name, date, amount: total, status: r === 'imported' ? 'добавлено' : 'обновлено' });
