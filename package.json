@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "import:statement": "tsx scripts/import-statement.mts",
+    "import:iiko": "tsx scripts/import-iiko-revenue.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

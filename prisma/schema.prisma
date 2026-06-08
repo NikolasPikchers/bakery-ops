@@ -39,6 +39,7 @@ enum UnknownLineStatus {
 enum RevenueSource {
   manual
   import
+  iiko
 }
 
 enum ExpenseSource {

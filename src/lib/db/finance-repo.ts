@@ -1,10 +1,11 @@
 import type { PrismaClient } from '@prisma/client';
 import { toDbDate } from './dates';
 
-type Source = 'manual' | 'import';
+type RevenueSrc = 'manual' | 'import' | 'iiko';
+type ExpenseSrc = 'manual' | 'import';
 
-export type RevenueInput = { pointId: string; date: string; amount: number; source: Source; note?: string | null; createdBy?: string | null };
-export type ExpenseInput = { pointId: string; date: string; amount: number; category: string; source: Source; note?: string | null; createdBy?: string | null };
+export type RevenueInput = { pointId: string; date: string; amount: number; source: RevenueSrc; note?: string | null; createdBy?: string | null };
+export type ExpenseInput = { pointId: string; date: string; amount: number; category: string; source: ExpenseSrc; note?: string | null; createdBy?: string | null };
 
 export async function upsertRevenue(prisma: PrismaClient, r: RevenueInput) {
   const date = toDbDate(r.date);
