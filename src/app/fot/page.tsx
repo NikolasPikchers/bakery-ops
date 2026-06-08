@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { getPrisma } from '@/lib/db/client';
 import { loadFot } from '@/lib/db/fot-repo';
 import { currentMonth, monthLabel, prevMonth, nextMonth } from '@/lib/finance/month';
+import { BONUS_LEVELS } from '@/lib/fot/bonus-colors';
 import { FotGrid } from './FotGrid';
 
 export const runtime = 'nodejs';
@@ -26,6 +27,16 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
           <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', minWidth: 110, textAlign: 'center' }}>{monthLabel(month)}</span>
           <Link href={q(nextMonth(month))} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 17 }}>›</Link>
         </div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16, fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>
+        <span>Премия за день (фон ✓ у пекарей/кассира):</span>
+        {BONUS_LEVELS.map((l) => (
+          <span key={l.amount} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 13, height: 13, borderRadius: 3, background: l.color, display: 'inline-block', border: '1px solid var(--line)' }} />
+            {l.amount} ₽
+          </span>
+        ))}
       </div>
 
       <div style={card}>

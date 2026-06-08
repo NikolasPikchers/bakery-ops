@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FotRow } from '@/lib/db/fot-repo';
+import { bonusColor } from '@/lib/fot/bonus-colors';
 
 const rub = (n: number) => Math.round(n).toLocaleString('ru-RU');
 
@@ -48,22 +49,30 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {rows.map((r) => {
+            const isBonusRole = r.employee.role === 'baker' || r.employee.role === 'cashier';
+            return (
             <tr key={r.employee.id} style={{ borderTop: '1px solid var(--line)' }}>
               <td style={{ padding: '6px 8px 6px 0', position: 'sticky', left: 0, background: 'var(--card)', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{r.employee.name}</span>
                 <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 6 }}>{roleLabel(r.employee)}</span>
               </td>
-              {r.days.map((d) => (
-                <td
-                  key={d.date}
-                  style={{ ...cell, background: d.present ? 'rgba(46,125,91,0.12)' : 'transparent', color: d.present ? 'var(--profit)' : 'var(--muted)' }}
-                  title={`${d.date} · ${d.present ? rub(d.pay) + ' ₽' : 'выходной'}`}
-                  onClick={() => toggle(r.employee.id, d.date, d.present)}
-                >
-                  {d.present ? '✓' : ''}
-                </td>
-              ))}
+              {r.days.map((d) => {
+                const bonus = isBonusRole && d.present ? Math.round(d.pay - r.employee.basePay) : 0;
+                const bc = d.present ? bonusColor(bonus) : null;
+                const bg = !d.present ? 'transparent' : bc ?? 'rgba(46,125,91,0.12)';
+                const tick = !d.present ? 'var(--muted)' : bc ? '#fff' : 'var(--profit)';
+                return (
+                  <td
+                    key={d.date}
+                    style={{ ...cell, background: bg, color: tick }}
+                    title={`${d.date} · ${d.present ? rub(d.pay) + ' ₽' + (bonus > 0 ? ` (премия ${bonus})` : '') : 'выходной'}`}
+                    onClick={() => toggle(r.employee.id, d.date, d.present)}
+                  >
+                    {d.present ? '✓' : ''}
+                  </td>
+                );
+              })}
               <td style={{ ...numTd, color: 'var(--ink)' }}>{r.shifts}</td>
               {semiMonthly ? (
                 <>
@@ -75,7 +84,8 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
                 <td style={{ ...numTd, color: 'var(--profit)' }}>{rub(r.payTotal)}</td>
               )}
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
