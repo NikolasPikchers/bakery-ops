@@ -176,3 +176,43 @@ model Expense {
   @@index([pointId, date])
   @@index([date])
 }
+
+enum EmployeeGroup {
+  bakery
+  confectionery
+}
+
+enum EmployeeRole {
+  baker
+  cashier
+  kitchen
+  confectioner
+}
+
+model Employee {
+  id          String        @id @default(cuid())
+  name        String
+  group       EmployeeGroup
+  role        EmployeeRole
+  brigade     String?
+  basePay     Decimal       @db.Decimal(10, 2)
+  schedOffset Int           @default(0)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  attendance  Attendance[]
+
+  @@unique([name, group])
+}
+
+model Attendance {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       DateTime @db.Date
+  present    Boolean
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
