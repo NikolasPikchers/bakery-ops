@@ -2,6 +2,7 @@ import type { PrismaClient } from '@prisma/client';
 import { monthRange, monthDays, prevMonth, monthsBack, monthShort } from '@/lib/finance/month';
 import { aggregateFinance, type FinanceSummary } from '@/lib/finance/dashboard-aggregate';
 import { currentOstatki, topSpisaniya, agingDesserts, type MovementRow } from './ops-aggregate';
+import { computePayrollTotal } from './fot-repo';
 
 export type DashboardPoint = 'all' | 'point-1' | 'point-2';
 
@@ -56,12 +57,19 @@ export async function loadDashboard(
     prisma.sheet.findMany({ where: { ...pointWhere, status: 'needs_review' }, orderBy: { createdAt: 'desc' }, take: 20, include: { point: { select: { name: true } } } }),
   ]);
 
+  // ФОТ (нал мимо Т-Бизнес) — Плюшкино; подмешиваем в расходы синтетической строкой 'fot'.
+  const includeFot = point !== 'point-2';
+  const fotCur = includeFot ? await computePayrollTotal(prisma, month) : 0;
+  const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month)) : 0;
+  const expensesInput = expCur.map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category }));
+  if (fotCur > 0) expensesInput.push({ date: start, amount: fotCur, category: 'fot' });
+
   const finance = aggregateFinance({
     monthDays: monthDays(month),
     revenues: revCur.map((r) => ({ date: iso(r.date), amount: Number(r.amount) })),
-    expenses: expCur.map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category })),
+    expenses: expensesInput,
     prevRevenue: revPrev.reduce((a, r) => a + Number(r.amount), 0),
-    prevExpense: expPrev.reduce((a, e) => a + Number(e.amount), 0),
+    prevExpense: expPrev.reduce((a, e) => a + Number(e.amount), 0) + fotPrev,
   });
 
   // 6-месячный тренд для спарклайнов KPI
