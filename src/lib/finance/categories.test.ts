@@ -2,9 +2,10 @@ import { describe, it, expect } from 'vitest';
 import { EXPENSE_CATEGORIES, EXPENSE_CATEGORY_KEYS, categoryLabel, categoryFromInput } from './categories';
 
 describe('expense categories', () => {
-  it('exposes the six fixed categories in order', () => {
-    expect(EXPENSE_CATEGORY_KEYS).toEqual(['produkty', 'arenda', 'fot', 'kommunalka', 'nalogi', 'prochee']);
+  it('exposes the fixed categories in order', () => {
+    expect(EXPENSE_CATEGORY_KEYS).toEqual(['produkty', 'arenda', 'fot', 'kommunalka', 'nalogi', 'investicii', 'prochee']);
     expect(EXPENSE_CATEGORIES.find((c) => c.key === 'fot')?.label).toBe('ФОТ');
+    expect(categoryLabel('investicii')).toBe('Инвестиции');
   });
   it('categoryLabel maps key to ru label', () => {
     expect(categoryLabel('nalogi')).toBe('Налоги');
