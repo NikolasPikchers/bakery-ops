@@ -97,14 +97,16 @@ async function fetchInputs(prisma: PrismaClient, month: string) {
   return { employees, revenueByDate, overrides };
 }
 
-export async function loadFot(prisma: PrismaClient, month: string): Promise<FotView> {
+/** Табель за месяц. `upTo` (ISO) ограничивает дни по дату включительно (для дашборда — «по сегодня»). */
+export async function loadFot(prisma: PrismaClient, month: string, upTo?: string): Promise<FotView> {
   const { employees, revenueByDate, overrides } = await fetchInputs(prisma, month);
-  return buildFot({ month, monthDays: monthDaysOf(month), employees, revenueByDate, overrides });
+  const days = upTo ? monthDaysOf(month).filter((d) => d <= upTo) : monthDaysOf(month);
+  return buildFot({ month, monthDays: days, employees, revenueByDate, overrides });
 }
 
-/** Сумма ФОТ за месяц (для дашборда). */
-export async function computePayrollTotal(prisma: PrismaClient, month: string): Promise<number> {
-  return (await loadFot(prisma, month)).totals.grand;
+/** Сумма ФОТ за месяц (для дашборда). `upTo` — считать только дни ≤ этой даты. */
+export async function computePayrollTotal(prisma: PrismaClient, month: string, upTo?: string): Promise<number> {
+  return (await loadFot(prisma, month, upTo)).totals.grand;
 }
 
 /** Ручная отметка выхода (override поверх авто-графика). */

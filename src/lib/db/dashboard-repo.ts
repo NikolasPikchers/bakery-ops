@@ -58,9 +58,11 @@ export async function loadDashboard(
   ]);
 
   // ФОТ (нал мимо Т-Бизнес) — Плюшкино; подмешиваем в расходы синтетической строкой 'fot'.
+  // ФОТ на дашборде — только по сегодняшнюю дату (чтобы не обгонять внесённую выручку).
   const includeFot = point !== 'point-2';
-  const fotCur = includeFot ? await computePayrollTotal(prisma, month) : 0;
-  const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month)) : 0;
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const fotCur = includeFot ? await computePayrollTotal(prisma, month, todayIso) : 0;
+  const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month), todayIso) : 0;
   const expensesInput = expCur.map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category }));
   if (fotCur > 0) expensesInput.push({ date: start, amount: fotCur, category: 'fot' });
 
