@@ -53,7 +53,12 @@ export function buildFot(args: {
     });
     return { employee: e, days, shifts, payTotal, payTo15, payAfter15 };
   });
-  const bakery = rows.filter((r) => r.employee.group === 'bakery');
+  // Пекарня: группируем по бригадам (A, затем B), кухня — вниз; внутри: пекари → кассир.
+  const brigRank = (r: FotRow) => (r.employee.role === 'kitchen' ? 3 : r.employee.brigade === 'A' ? 0 : r.employee.brigade === 'B' ? 1 : 2);
+  const roleRank = (r: FotRow) => (r.employee.role === 'baker' ? 0 : r.employee.role === 'cashier' ? 1 : 2);
+  const bakery = rows
+    .filter((r) => r.employee.group === 'bakery')
+    .sort((a, b) => brigRank(a) - brigRank(b) || roleRank(a) - roleRank(b) || a.employee.name.localeCompare(b.employee.name));
   const confectionery = rows.filter((r) => r.employee.group === 'confectionery');
   const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay, 0) }));
   const sumBy = (rs: FotRow[], k: (r: FotRow) => number) => rs.reduce((s, r) => s + k(r), 0);

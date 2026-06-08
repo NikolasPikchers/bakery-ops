@@ -49,10 +49,12 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => {
+          {rows.map((r, i) => {
             const isBonusRole = r.employee.role === 'baker' || r.employee.role === 'cashier';
+            const grp = (e: FotRow['employee']) => (e.role === 'kitchen' ? 'k' : e.brigade ?? '-');
+            const newGroup = i > 0 && grp(r.employee) !== grp(rows[i - 1].employee);
             return (
-            <tr key={r.employee.id} style={{ borderTop: '1px solid var(--line)' }}>
+            <tr key={r.employee.id} style={{ borderTop: newGroup ? '2px solid #cfd6d2' : '1px solid var(--line)' }}>
               <td style={{ padding: '6px 8px 6px 0', position: 'sticky', left: 0, background: 'var(--card)', whiteSpace: 'nowrap' }}>
                 <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{r.employee.name}</span>
                 <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 6 }}>{roleLabel(r.employee)}</span>
