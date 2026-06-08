@@ -11,13 +11,15 @@ async function makeXlsx(rows: unknown[][]): Promise<Buffer> {
 }
 
 describe('parseSalesXlsx', () => {
-  it('суммирует колонку выручки по строкам-блюдам, игнорит прочее', async () => {
+  it('суммирует все строки-блюда (с префиксом и без), исключая строку-итог', async () => {
     const buf = await makeXlsx([
-      ['// Пирог 100', 5, 500],
-      ['\\ Десерт 150', 2, 300],
-      ['Итого', null, 9999],
+      ['// Пирог 100', 5, 500], // пироги
+      ['\\ Десерт 150', 2, 300], // десерты
+      ['Капучино 139', 3, 410], // напиток без префикса — раньше терялся
+      ['Итого', 10, 9999], // подпись «Итого» — исключаем
+      [null, 419, 1210], // grand total с пустым «Блюдо» — исключаем
     ]);
-    expect(await parseSalesXlsx(buf)).toEqual({ total: 800, positions: 2 });
+    expect(await parseSalesXlsx(buf)).toEqual({ total: 1210, positions: 3 });
   });
 });
 

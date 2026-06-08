@@ -20,7 +20,8 @@ export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<{ t
   ws.eachRow((row, rowNum) => {
     if (rowNum === 1) return;
     const name = String(row.getCell(1).value ?? '').trim();
-    if (!(name.startsWith('//') || name.startsWith('\\'))) return;
+    if (name.length === 0) return; // строка-итог: «Блюдо» пустое
+    if (name.toLowerCase().includes('итог')) return; // подпись «Итого», если попадётся
     const v = Number(row.getCell(revCol).value);
     if (Number.isFinite(v)) {
       total += v;
