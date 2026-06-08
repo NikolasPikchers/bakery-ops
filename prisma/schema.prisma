@@ -54,6 +54,7 @@ enum ExpenseCategory {
   fot
   kommunalka
   nalogi
+  investicii
   prochee
 }
 

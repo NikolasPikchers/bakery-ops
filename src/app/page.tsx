@@ -19,6 +19,7 @@ const CAT_COLOR: Record<string, string> = {
   fot: '#5b8def',
   kommunalka: '#c0392b',
   nalogi: '#9b59b6',
+  investicii: '#14b8a6',
   prochee: '#d8dedb',
 };
 

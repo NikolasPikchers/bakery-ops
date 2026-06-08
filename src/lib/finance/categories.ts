@@ -4,6 +4,7 @@ export const EXPENSE_CATEGORIES = [
   { key: 'fot', label: 'ФОТ' },
   { key: 'kommunalka', label: 'Коммуналка' },
   { key: 'nalogi', label: 'Налоги' },
+  { key: 'investicii', label: 'Инвестиции' },
   { key: 'prochee', label: 'Прочее' },
 ] as const;
 

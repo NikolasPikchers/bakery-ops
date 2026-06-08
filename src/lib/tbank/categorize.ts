@@ -16,7 +16,7 @@ export function isImportableExpense(op: BankOperation): boolean {
 // Прямое сопоставление ИНН контрагента → категория (расширяется со временем).
 export const CATEGORY_BY_INN: Readonly<Record<string, ExpenseCategoryKey>> = {
   '5258068806': 'produkty', // ООО «СВИТ ЛАЙФ ФУДСЕРВИС» — поставщик продуктов
-  '1800031056': 'produkty', // ООО «ЯНС-ХОРЕКА» — поставщик
+  '1800031056': 'investicii', // ООО «ЯНС-ХОРЕКА» — оборудование/HoReCa (инвестиции)
   '7734523776': 'produkty', // АО «ОПТИКОМ» — поставщик
   '524700117689': 'arenda', // ИП Сулейманов — аренда
   '0278109628': 'kommunalka', // Уфанет — интернет
