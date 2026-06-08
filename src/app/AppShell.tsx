@@ -28,8 +28,8 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
   if (!authed) return <>{children}</>;
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', width: '100%' }}>
-      {/* icon rail */}
+    <div style={{ display: 'flex', height: '100vh', width: '100%', overflow: 'hidden' }}>
+      {/* icon rail — фиксированный, на всю высоту экрана */}
       <nav
         style={{
           width: 72,
@@ -41,9 +41,8 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
           paddingTop: 22,
           gap: 8,
           flexShrink: 0,
-          position: 'sticky',
-          top: 0,
-          height: '100vh',
+          height: '100%',
+          overflowY: 'auto',
         }}
       >
         {NAV.map((n) => {
@@ -91,19 +90,18 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
       </nav>
 
       {/* main column */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0, height: '100%', overflow: 'hidden' }}>
         {/* top bar */}
         <header
           style={{
             height: 76,
+            flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
             gap: 22,
             padding: '0 28px',
             borderBottom: '1px solid var(--line)',
             background: 'var(--card)',
-            position: 'sticky',
-            top: 0,
             zIndex: 10,
           }}
         >
@@ -170,7 +168,7 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
           </span>
         </header>
 
-        <main style={{ flex: 1, minWidth: 0 }}>{children}</main>
+        <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>{children}</main>
       </div>
     </div>
   );
