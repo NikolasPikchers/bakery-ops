@@ -53,3 +53,8 @@
 .stale { background: #fff6e6; }
 .age { color: #b9772a; font-weight: 700; }
 .num { text-align: right; font-variant-numeric: tabular-nums; }
+.dashKpis { display: grid; grid-template-columns: 1.25fr 1fr 1fr 1fr; gap: 16px; margin-bottom: 18px; }
+.dashRow { display: grid; grid-template-columns: 1.7fr 1fr; gap: 18px; margin-bottom: 18px; }
+.dashRow.last { margin-bottom: 0; }
+@media (max-width: 1100px) { .dashKpis { grid-template-columns: 1fr 1fr; } .dashRow { grid-template-columns: 1fr; } }
+@media (max-width: 600px) { .dashKpis { grid-template-columns: 1fr; } }

@@ -1,15 +1,25 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  --bg: #f4f7f5;
+  /* Дизайн Nikas Cafe (направление A, светлая тема) */
+  --bg: #f4f6f5;
   --card: #ffffff;
-  --line: #eceeec;
-  --muted: #7d8c84;
+  --line: #eef1ef;
+  --muted: #8a958f;
   --brand: #8fbc9b;
   --profit: #2e7d5b;
   --revenue: #2563eb;
   --expense: #c0392b;
-  --ink: #1d2b22;
+  --ink: #1f2a25;
+  --chip: #f1f4f2;
+  --shadow: 0 2px 8px rgba(31, 42, 37, 0.06);
+  --radius: 22px;
+  --cat-produkty: #2e7d5b;
+  --cat-arenda: #e0a458;
+  --cat-fot: #5b8def;
+  --cat-kommunalka: #c0392b;
+  --cat-nalogi: #9b59b6;
+  --cat-prochee: #d8dedb;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -35,7 +45,7 @@ body {
   flex-direction: column;
   color: var(--ink);
   background: var(--bg);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-manrope), system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }

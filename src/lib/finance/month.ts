@@ -39,3 +39,16 @@ export function monthLabel(month: string): string {
   const { y, m } = parse(month);
   return `${RU_MONTHS[m - 1]} ${y}`;
 }
+
+/** n месяцев, заканчивая на `month` (от старого к новому). monthsBack('2026-06',6)→['2026-01'..'2026-06']. */
+export function monthsBack(month: string, n: number): string[] {
+  const out = [month];
+  for (let i = 1; i < n; i++) out.unshift(prevMonth(out[0]));
+  return out;
+}
+
+/** Короткая ru-метка месяца: 'Июн'. */
+export function monthShort(month: string): string {
+  const { m } = parse(month);
+  return RU_MONTHS[m - 1].slice(0, 3);
+}
