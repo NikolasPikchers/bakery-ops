@@ -1,4 +1,13 @@
 // Лёгкие inline-SVG графики для дашборда (рендерятся на сервере). Портировано из дизайна Nikas Cafe.
+import styles from './ui.module.css';
+
+const MON_SHORT = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек'];
+const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
+function dayLabel(iso: string): string {
+  const d = Number(iso.slice(8, 10));
+  const m = Number(iso.slice(5, 7));
+  return `${d} ${MON_SHORT[m - 1] ?? ''}`;
+}
 
 /** Спарклайн: линия + мягкая заливка. `id` обязателен (уникальный для градиента). */
 export function Sparkline({
@@ -113,24 +122,25 @@ export function Donut({
   );
 }
 
-/** Бары выручки по дням (CSS, адаптивно). */
-export function DayBars({ values, color = '#2563eb', height = 170 }: { values: number[]; color?: string; height?: number }) {
-  const max = Math.max(1, ...values);
+/** Бары выручки по дням: подписи дней снизу + тултип (дата · выручка) на наведение. */
+export function DayBars({ data, color = '#2563eb', height = 170 }: { data: { date: string; revenue: number }[]; color?: string; height?: number }) {
+  const max = Math.max(1, ...data.map((d) => d.revenue));
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-end', gap: 3, height }}>
-      {values.map((v, i) => (
-        <div
-          key={i}
-          style={{
-            flex: 1,
-            minWidth: 2,
-            height: `${Math.max(2, (v / max) * 100)}%`,
-            background: color,
-            borderRadius: '4px 4px 0 0',
-            opacity: 0.92,
-          }}
-        />
-      ))}
+    <div>
+      <div className={styles.bars2} style={{ height }}>
+        {data.map((d, i) => (
+          <div key={i} className={styles.barCol}>
+            <span className={styles.barTip}>{dayLabel(d.date)} · {rub(d.revenue)}</span>
+            <span className={styles.bar} style={{ height: `${Math.max(2, (d.revenue / max) * 100)}%`, background: color }} />
+          </div>
+        ))}
+      </div>
+      <div className={styles.barAxis}>
+        {data.map((d, i) => {
+          const day = Number(d.date.slice(8, 10));
+          return <span key={i} className={styles.barAxisCell}>{day % 5 === 0 ? day : ''}</span>;
+        })}
+      </div>
     </div>
   );
 }

@@ -163,9 +163,9 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
       <div className={styles.dashRow}>
         <Panel title="Выручка по дням" extra={<span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}><span style={{ width: 10, height: 10, borderRadius: 4, background: 'var(--revenue)' }} />iiko · ₽/день</span>}>
           {f.revenue === 0 ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '40px 2px' }}>Нет выручки за месяц. Внесите её на странице <Link href="/finance" style={{ color: 'var(--profit)', fontWeight: 700 }}>Финансы</Link>.</p>
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '40px 2px' }}>Нет выручки за месяц. Внесите её на странице <Link href="/revenue" style={{ color: 'var(--profit)', fontWeight: 700 }}>Выручка</Link>.</p>
           ) : (
-            <DayBars values={f.byDay.map((d) => d.revenue)} color="#2563eb" height={178} />
+            <DayBars data={f.byDay} color="#2563eb" height={178} />
           )}
         </Panel>
         <Panel title="Структура расходов">
