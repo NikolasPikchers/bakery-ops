@@ -62,3 +62,48 @@ export async function deleteRevenue(prisma: PrismaClient, id: string) {
 export async function deleteExpense(prisma: PrismaClient, id: string) {
   await prisma.expense.delete({ where: { id } });
 }
+
+export type ExpenseListItem = {
+  id: string;
+  date: string; // ISO yyyy-mm-dd
+  pointName: string;
+  amount: number;
+  category: string;
+  source: string;
+  counterparty: string | null;
+  note: string | null;
+};
+
+/** Список расходов (для вкладки «Расходы»). По умолчанию — последние 200. */
+export async function listExpenses(prisma: PrismaClient, opts?: { limit?: number; month?: string }): Promise<ExpenseListItem[]> {
+  const where = opts?.month
+    ? { date: { gte: toDbDate(`${opts.month}-01`), lt: toDbDate(`${nextMonthFirst(opts.month)}`) } }
+    : {};
+  const rows = await prisma.expense.findMany({
+    where,
+    orderBy: { date: 'desc' },
+    take: opts?.limit ?? 200,
+    include: { point: { select: { name: true } } },
+  });
+  const iso = (d: Date) => d.toISOString().slice(0, 10);
+  return rows.map((e) => ({
+    id: e.id,
+    date: iso(e.date),
+    pointName: e.point.name,
+    amount: Number(e.amount),
+    category: e.category,
+    source: e.source,
+    counterparty: e.counterparty ?? null,
+    note: e.note ?? null,
+  }));
+}
+
+function nextMonthFirst(month: string): string {
+  if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)) throw new Error(`Некорректный месяц: ${month}`);
+  const [y, m] = month.split('-').map(Number);
+  return m === 12 ? `${y + 1}-01-01` : `${y}-${String(m + 1).padStart(2, '0')}-01`;
+}
+
+export async function updateExpenseCategory(prisma: PrismaClient, id: string, category: string) {
+  return prisma.expense.update({ where: { id }, data: { category: category as never } });
+}

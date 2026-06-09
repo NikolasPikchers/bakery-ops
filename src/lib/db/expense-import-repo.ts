@@ -31,9 +31,10 @@ export async function upsertImportedExpense(
       inn: e.inn ?? undefined,
       note: e.note ?? undefined,
     },
+    // При повторной загрузке выписки НЕ трогаем category: сохраняем ручные правки
+    // категорий, сделанные во вкладке «Расходы». Обновляем только факты из банка.
     update: {
       amount: e.amount,
-      category: e.category as never,
       counterparty: e.counterparty ?? undefined,
       inn: e.inn ?? undefined,
       note: e.note ?? undefined,

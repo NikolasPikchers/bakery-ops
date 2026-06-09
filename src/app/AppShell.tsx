@@ -15,6 +15,7 @@ const I = (d: React.ReactNode) => (
 const NAV: NavItem[] = [
   { href: '/', label: 'Дашборд', icon: I(<path d="M3 13h7V3H3v10Zm0 8h7v-6H3v6Zm11 0h7V11h-7v10Zm0-18v6h7V3h-7Z" />) },
   { href: '/revenue', label: 'Выручка', icon: I(<><rect x="2.5" y="6" width="19" height="12" rx="2" /><circle cx="12" cy="12" r="2.6" /></>) },
+  { href: '/expenses', label: 'Расходы', icon: I(<><path d="M4 7a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v13l-3-2-3 2-3-2-3 2-4-2.5V7Z" strokeLinejoin="round" /><path d="M8 9h8M8 13h5" strokeLinecap="round" /></>) },
   { href: '/breakdown', label: 'Разбивка', icon: I(<path d="M4 20V4M20 20H4M8.5 20v-6M13.5 20V9M18.5 20v-3" strokeLinecap="round" strokeLinejoin="round" />) },
   { href: '/fot', label: 'ФОТ', icon: I(<><circle cx="9" cy="8" r="3" /><path d="M3.5 20a5.5 5.5 0 0 1 11 0M16 11h5M16 15h5M16 7h5" strokeLinecap="round" /></>) },
   { href: '/upload', label: 'Загрузить', icon: I(<path d="M12 16V4m0 0 4 4m-4-4-4 4M4 20h16" strokeLinecap="round" strokeLinejoin="round" />) },
