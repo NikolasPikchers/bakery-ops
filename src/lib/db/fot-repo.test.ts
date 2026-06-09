@@ -15,19 +15,19 @@ describe('buildFot', () => {
   it('считает выходы и ЗП, применяет авто-график', () => {
     const v = buildFot({ month: '2026-06', monthDays, employees, revenueByDate, overrides: new Map() });
     const katya = v.bakery.find((r) => r.employee.id === 'k')!;
-    expect(katya.days.map((d) => d.present)).toEqual([true, true, false]); // бригада A: 08,09 W, 10 O
-    expect(katya.payTotal).toBe(3100 + 2300);
-    expect(katya.payTo15).toBe(3100 + 2300); // обе смены до 15-го
+    expect(katya.days.map((d) => d.present)).toEqual([true, false, false]); // бригада A: 08 W, 09-10 O (бригада B)
+    expect(katya.payTotal).toBe(3100); // только 08 (2300 + премия 800)
+    expect(katya.payTo15).toBe(3100); // смена до 15-го
     const lena = v.confectionery.find((r) => r.employee.id === 'l')!;
     expect(lena.days.map((d) => d.present)).toEqual([true, true, false]);
     expect(lena.payTotal).toBe(5000);
-    expect(v.totals.grand).toBe(3100 + 2300 + 5000);
+    expect(v.totals.grand).toBe(3100 + 5000);
   });
 
   it('override снимает смену', () => {
     const v = buildFot({ month: '2026-06', monthDays, employees, revenueByDate, overrides: new Map([['k|2026-06-08', false]]) });
     const katya = v.bakery.find((r) => r.employee.id === 'k')!;
     expect(katya.days[0].present).toBe(false);
-    expect(katya.payTotal).toBe(2300); // только 09
+    expect(katya.payTotal).toBe(0); // снят единственный авто-выход 08; 09-10 — бригада B
   });
 });

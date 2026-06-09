@@ -6,9 +6,10 @@ const conf = (schedOffset: number): SchedEmployee => ({ role: 'confectioner', gr
 const kitchen: SchedEmployee = { role: 'kitchen', group: 'bakery', brigade: null, schedOffset: 0 };
 
 describe('autoPresent', () => {
-  it('бригады A/B 2/2 от опоры 08.06', () => {
-    expect([8, 9, 10, 11, 12, 13].map((d) => autoPresent(baker('A'), `2026-06-${d}`))).toEqual([true, true, false, false, true, true]);
-    expect([8, 9, 10, 11, 12, 13].map((d) => autoPresent(baker('B'), `2026-06-${d}`))).toEqual([false, false, true, true, false, false]);
+  it('бригады A/B 2/2: A=08-08, B=09-10, A=11-12 (опора 07.06)', () => {
+    // 08 — A, 09-10 — B (первый день B = 09), 11-12 — A, 13 — B
+    expect([8, 9, 10, 11, 12, 13].map((d) => autoPresent(baker('A'), `2026-06-${d}`))).toEqual([true, false, false, true, true, false]);
+    expect([8, 9, 10, 11, 12, 13].map((d) => autoPresent(baker('B'), `2026-06-${d}`))).toEqual([false, true, true, false, false, true]);
   });
   it('кондитеры со сдвигом', () => {
     expect([8, 9, 10, 11].map((d) => autoPresent(conf(0), `2026-06-${d}`))).toEqual([true, true, false, false]); // Лена
