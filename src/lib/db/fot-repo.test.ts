@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { buildFot, type FotEmployee } from './fot-repo';
+import { monthDays as monthDaysOf } from '../finance/month';
 
 const monthDays = ['2026-06-08', '2026-06-09', '2026-06-10'];
 const employees: FotEmployee[] = [
@@ -29,5 +30,21 @@ describe('buildFot', () => {
     const katya = v.bakery.find((r) => r.employee.id === 'k')!;
     expect(katya.days[0].present).toBe(false);
     expect(katya.payTotal).toBe(0); // снят единственный авто-выход 08; 09-10 — бригада B
+  });
+
+  it('фикс-оклад: полный месяц = monthly, неполный — пропорция дней', () => {
+    const fixedSalaries = [{ name: 'Водитель', monthly: 30000 }];
+    // Полный июнь (30 дней) → ровно 30 000.
+    const full = buildFot({ month: '2026-06', monthDays: monthDaysOf('2026-06'), employees: [], revenueByDate: new Map(), overrides: new Map(), fixedSalaries });
+    expect(full.fixed).toEqual([{ name: 'Водитель', monthly: 30000, total: 30000 }]);
+    expect(full.totals.fixedTotal).toBe(30000);
+    expect(full.totals.grand).toBe(30000);
+    // 10 из 30 дней (дашборд «по сегодня») → 10 000.
+    const ten = buildFot({ month: '2026-06', monthDays: monthDaysOf('2026-06').slice(0, 10), employees: [], revenueByDate: new Map(), overrides: new Map(), fixedSalaries });
+    expect(ten.totals.fixedTotal).toBe(10000);
+    // Без фикс-окладов (дефолт) — секция пустая, grand не меняется.
+    const none = buildFot({ month: '2026-06', monthDays, employees, revenueByDate, overrides: new Map() });
+    expect(none.fixed).toEqual([]);
+    expect(none.totals.fixedTotal).toBe(0);
   });
 });

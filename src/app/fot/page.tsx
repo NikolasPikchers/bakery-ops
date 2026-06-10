@@ -57,8 +57,28 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
         <FotGrid rows={v.confectionery} monthDays={v.monthDays} semiMonthly={false} />
       </div>
 
+      {v.fixed.length > 0 && (
+        <div style={card}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
+            <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>Фиксированные выплаты</div>
+            <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>за месяц: <b style={{ color: 'var(--profit)' }}>{rub(t.fixedTotal)}</b></div>
+          </div>
+          <table style={{ borderCollapse: 'collapse', width: '100%' }}>
+            <tbody>
+              {v.fixed.map((f) => (
+                <tr key={f.name} style={{ borderTop: '1px solid var(--line)' }}>
+                  <td style={{ padding: '8px 8px 8px 0', fontWeight: 700, color: 'var(--ink)', whiteSpace: 'nowrap' }}>{f.name}</td>
+                  <td style={{ padding: '8px', color: 'var(--muted)', fontSize: 13, fontWeight: 600 }}>{rub(f.monthly)} / мес · каждый день</td>
+                  <td style={{ padding: '8px 0 8px 8px', textAlign: 'right', fontWeight: 800, color: 'var(--profit)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{rub(f.total)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
       <p style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>
-        Итого ФОТ за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.grand)}</b>. Клик по ячейке — переключить выход. Премии — от выручки Плюшкино за день.
+        Итого ФОТ за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.grand)}</b> (включая фикс-выплаты). Клик по ячейке — переключить выход. Премии — от выручки Плюшкино за день.
       </p>
     </div>
   );

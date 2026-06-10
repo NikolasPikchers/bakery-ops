@@ -3,6 +3,7 @@ import { monthRange, monthDays as monthDaysOf } from '@/lib/finance/month';
 import { toDbDate } from './dates';
 import { autoPresent, type SchedEmployee } from '@/lib/fot/schedule';
 import { dailyPay } from '@/lib/fot/payroll';
+import { FIXED_SALARIES, type FixedSalary } from '@/lib/fot/fixed';
 
 export type FotEmployee = {
   id: string;
@@ -15,24 +16,27 @@ export type FotEmployee = {
 };
 export type FotDay = { date: string; present: boolean; pay: number };
 export type FotRow = { employee: FotEmployee; days: FotDay[]; shifts: number; payTotal: number; payTo15: number; payAfter15: number };
+export type FotFixedRow = { name: string; monthly: number; total: number };
 export type FotView = {
   month: string;
   monthDays: string[];
   bakery: FotRow[];
   confectionery: FotRow[];
+  fixed: FotFixedRow[];
   dailyTotal: { date: string; amount: number }[];
-  totals: { bakeryTo15: number; bakeryAfter15: number; bakeryTotal: number; confectioneryTotal: number; grand: number };
+  totals: { bakeryTo15: number; bakeryAfter15: number; bakeryTotal: number; confectioneryTotal: number; fixedTotal: number; grand: number };
 };
 
-/** Чистая сборка табеля из данных (без БД). */
+/** Чистая сборка табеля из данных (без БД). `fixedSalaries` — фикс-оклады (по умолчанию пусто). */
 export function buildFot(args: {
   month: string;
   monthDays: string[];
   employees: FotEmployee[];
   revenueByDate: Map<string, { total: number; pies: number }>;
   overrides: Map<string, boolean>;
+  fixedSalaries?: FixedSalary[];
 }): FotView {
-  const { month, monthDays, employees, revenueByDate, overrides } = args;
+  const { month, monthDays, employees, revenueByDate, overrides, fixedSalaries = [] } = args;
   const rows: FotRow[] = employees.map((e) => {
     const sched: SchedEmployee = { role: e.role, group: e.group, brigade: e.brigade, schedOffset: e.schedOffset };
     let payTotal = 0;
@@ -60,6 +64,18 @@ export function buildFot(args: {
     .filter((r) => r.employee.group === 'bakery')
     .sort((a, b) => brigRank(a) - brigRank(b) || roleRank(a) - roleRank(b) || a.employee.name.localeCompare(b.employee.name));
   const confectionery = rows.filter((r) => r.employee.group === 'confectionery');
+
+  // Фикс-оклады (напр. папа-водитель): начисляются пропорционально числу учитываемых
+  // дней месяца. Полный месяц (monthDays = весь месяц) → ровно monthly; на дашборде
+  // (monthDays обрезаны «по сегодня») → пропорция дней.
+  const fullDays = monthDaysOf(month).length;
+  const fixed: FotFixedRow[] = fixedSalaries.map((f) => ({
+    name: f.name,
+    monthly: f.monthly,
+    total: fullDays > 0 ? Math.round((f.monthly * monthDays.length) / fullDays) : 0,
+  }));
+  const fixedTotal = fixed.reduce((s, f) => s + f.total, 0);
+
   const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay, 0) }));
   const sumBy = (rs: FotRow[], k: (r: FotRow) => number) => rs.reduce((s, r) => s + k(r), 0);
   const totals = {
@@ -67,9 +83,10 @@ export function buildFot(args: {
     bakeryAfter15: sumBy(bakery, (r) => r.payAfter15),
     bakeryTotal: sumBy(bakery, (r) => r.payTotal),
     confectioneryTotal: sumBy(confectionery, (r) => r.payTotal),
-    grand: sumBy(rows, (r) => r.payTotal),
+    fixedTotal,
+    grand: sumBy(rows, (r) => r.payTotal) + fixedTotal,
   };
-  return { month, monthDays, bakery, confectionery, dailyTotal, totals };
+  return { month, monthDays, bakery, confectionery, fixed, dailyTotal, totals };
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -106,7 +123,7 @@ async function fetchInputs(prisma: PrismaClient, month: string) {
 export async function loadFot(prisma: PrismaClient, month: string, upTo?: string): Promise<FotView> {
   const { employees, revenueByDate, overrides } = await fetchInputs(prisma, month);
   const days = upTo ? monthDaysOf(month).filter((d) => d <= upTo) : monthDaysOf(month);
-  return buildFot({ month, monthDays: days, employees, revenueByDate, overrides });
+  return buildFot({ month, monthDays: days, employees, revenueByDate, overrides, fixedSalaries: FIXED_SALARIES });
 }
 
 /** Сумма ФОТ за месяц (для дашборда). `upTo` — считать только дни ≤ этой даты. */
