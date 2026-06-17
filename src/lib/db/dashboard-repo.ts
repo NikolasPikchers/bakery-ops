@@ -3,6 +3,7 @@ import { monthRange, monthDays, prevMonth, monthsBack, monthShort } from '@/lib/
 import { aggregateFinance, type FinanceSummary } from '@/lib/finance/dashboard-aggregate';
 import { currentOstatki, topSpisaniya, agingDesserts, type MovementRow } from './ops-aggregate';
 import { computePayrollTotal } from './fot-repo';
+import { FIXED_EXPENSES, FIXED_EXPENSE_CATEGORIES, proratedMonthly } from '@/lib/finance/fixed-expenses';
 
 export type DashboardPoint = 'all' | 'point-1' | 'point-2';
 
@@ -47,7 +48,7 @@ export async function loadDashboard(
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true, category: true } }),
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true } }),
-    prisma.expense.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true } }),
+    prisma.expense.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true, category: true } }),
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.movement.findMany({
@@ -63,15 +64,31 @@ export async function loadDashboard(
   const todayIso = new Date().toISOString().slice(0, 10);
   const fotCur = includeFot ? await computePayrollTotal(prisma, month, todayIso) : 0;
   const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month), todayIso) : 0;
-  const expensesInput = expCur.map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category }));
+
+  // Аренда+коммуналка — фикс, равномерно по дням (как ФОТ). Фактические проводки из
+  // выписки по этим категориям на дашборде ИГНОРИРУЕМ, чтобы не задвоить. Только Плюшкино.
+  const includeFixed = point !== 'point-2';
+  const isDroppedFixed = (cat: string) => includeFixed && FIXED_EXPENSE_CATEGORIES.has(cat);
+  const fixedRows = (m: string) =>
+    includeFixed
+      ? FIXED_EXPENSES.map((f) => ({ date: start, amount: proratedMonthly(f.monthly, m, todayIso), category: f.category })).filter((r) => r.amount > 0)
+      : [];
+
+  const expensesInput = expCur
+    .filter((e) => !isDroppedFixed(e.category))
+    .map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category }));
   if (fotCur > 0) expensesInput.push({ date: start, amount: fotCur, category: 'fot' });
+  expensesInput.push(...fixedRows(month));
+
+  const prevExpenseActual = expPrev.filter((e) => !isDroppedFixed(e.category)).reduce((a, e) => a + Number(e.amount), 0);
+  const fixedPrev = fixedRows(prevMonth(month)).reduce((s, r) => s + r.amount, 0);
 
   const finance = aggregateFinance({
     monthDays: monthDays(month),
     revenues: revCur.map((r) => ({ date: iso(r.date), amount: Number(r.amount) })),
     expenses: expensesInput,
     prevRevenue: revPrev.reduce((a, r) => a + Number(r.amount), 0),
-    prevExpense: expPrev.reduce((a, e) => a + Number(e.amount), 0) + fotPrev,
+    prevExpense: prevExpenseActual + fotPrev + fixedPrev,
   });
 
   // 6-месячный тренд для спарклайнов KPI
