@@ -12,6 +12,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? '') ? (sp.month as string) : currentMonth(new Date());
   const expenses = await listExpenses(getPrisma(), { month });
   const total = expenses.reduce((s, e) => s + e.amount, 0);
+  const today = new Date().toISOString().slice(0, 10);
   const q = (m: string) => `/expenses?month=${m}`;
 
   return (
@@ -24,7 +25,7 @@ export default async function ExpensesPage({ searchParams }: { searchParams: Pro
           <Link href={q(nextMonth(month))} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 17 }}>›</Link>
         </div>
       </div>
-      <ExpensesClient expenses={expenses} total={total} />
+      <ExpensesClient expenses={expenses} total={total} today={today} />
     </div>
   );
 }

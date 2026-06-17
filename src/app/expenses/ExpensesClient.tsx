@@ -33,7 +33,7 @@ type ImportResult = {
 
 const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 22, marginBottom: 18 };
 
-export function ExpensesClient({ expenses, total }: { expenses: ExpenseListItem[]; total: number }) {
+export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseListItem[]; total: number; today: string }) {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -41,6 +41,42 @@ export function ExpensesClient({ expenses, total }: { expenses: ExpenseListItem[
   const [msg, setMsg] = useState('');
   const [result, setResult] = useState<ImportResult | null>(null);
   const [rowBusy, setRowBusy] = useState<string | null>(null);
+
+  // Ручное добавление расхода
+  const [amount, setAmount] = useState('');
+  const [addCat, setAddCat] = useState('produkty');
+  const [addDate, setAddDate] = useState(today);
+  const [addBusy, setAddBusy] = useState(false);
+  const [addMsg, setAddMsg] = useState('');
+
+  async function addExpense(e: React.FormEvent) {
+    e.preventDefault();
+    const amt = Number(amount.replace(/\s/g, '').replace(',', '.'));
+    if (!(amt > 0)) {
+      setAddMsg('Введите сумму больше 0');
+      return;
+    }
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(addDate)) {
+      setAddMsg('Укажите дату');
+      return;
+    }
+    setAddBusy(true);
+    setAddMsg('');
+    const res = await fetch('/api/finance', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'expense', pointId: 'point-1', date: addDate, amount: amt, category: addCat }),
+    });
+    setAddBusy(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setAddMsg(`Ошибка: ${d.error ?? res.status}`);
+      return;
+    }
+    setAmount('');
+    setAddMsg('Добавлено');
+    router.refresh();
+  }
 
   async function upload(e: React.FormEvent) {
     e.preventDefault();
@@ -94,8 +130,35 @@ export function ExpensesClient({ expenses, total }: { expenses: ExpenseListItem[
 
   const btn: React.CSSProperties = { padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--profit)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' };
 
+  const input: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: 'var(--ink)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px' };
+
   return (
     <>
+      {/* Добавить расход вручную */}
+      <section style={card}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', marginBottom: 12 }}>Добавить расход вручную</div>
+        <form onSubmit={addExpense} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+          <input
+            inputMode="decimal"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Сумма, ₽"
+            style={{ ...input, width: 140 }}
+          />
+          <select value={addCat} onChange={(e) => setAddCat(e.target.value)} style={input}>
+            {EXPENSE_CATEGORIES.map((c) => (
+              <option key={c.key} value={c.key}>{c.label}</option>
+            ))}
+          </select>
+          <input type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} style={input} />
+          <button type="submit" style={{ ...btn, opacity: addBusy ? 0.6 : 1 }} disabled={addBusy}>{addBusy ? 'Добавляю…' : 'Добавить'}</button>
+          {addMsg && <span style={{ fontSize: 13, color: addMsg === 'Добавлено' ? 'var(--profit)' : 'var(--muted)', fontWeight: 600 }}>{addMsg}</span>}
+        </form>
+        <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, margin: '10px 0 0' }}>
+          Расход идёт на <b>Плюшкино</b>, дата по умолчанию — сегодня. Аренда и коммуналка считаются фиксом (125 000/мес), поэтому такие записи в дашборде не учитываются.
+        </p>
+      </section>
+
       {/* Загрузка выписки */}
       <section style={card}>
         <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>Загрузить выписку Т-Банка</div>
