@@ -2,10 +2,10 @@ import { auth } from '@/auth';
 import { getPrisma } from '@/lib/db/client';
 import { parseStatementCsv } from '@/lib/tbank/parse-statement';
 import { buildStatementPreview } from '@/lib/tbank/preview';
-import { importExpenses } from '@/lib/tbank/import-expenses';
+import { buildExpenseRows } from '@/lib/tbank/build-rows';
 import { firstCsvBytesFromZip } from '@/lib/tbank/unzip';
 import type { BankOperation } from '@/lib/tbank/types';
-import { upsertImportedExpense } from '@/lib/db/expense-import-repo';
+import { bulkInsertExpenses } from '@/lib/db/expense-import-repo';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -57,18 +57,14 @@ export async function POST(req: Request) {
 
   const preview = buildStatementPreview(ops);
 
-  // 3. Импорт — только операции с распознанной датой (пустая дата сломала бы запись).
-  const datedOps = ops.filter((o) => o.date !== '');
-  const skippedNoDate = ops.length - datedOps.length;
+  // 3. Пакетный импорт: фильтр+категоризация (чистая функция) → одна пакетная вставка.
+  //    Быстро и не зависит от размера выписки (без построчных upsert'ов).
+  const rows = buildExpenseRows(ops, POINT);
+  const skippedNoDate = ops.filter((o) => o.direction === 'out' && o.date === '').length;
 
   const prisma = getPrisma();
-  const summary = await importExpenses({
-    fetchStatement: async () => datedOps,
-    upsert: (e) => upsertImportedExpense(prisma, e),
-    pointId: POINT,
-    from: '',
-    till: '',
-  });
+  const { imported, skipped } = await bulkInsertExpenses(prisma, rows);
+  const summary = { fetched: ops.length, outgoing: preview.outgoing, imported, skipped };
 
   return Response.json({ summary, preview, skippedNoDate });
 }

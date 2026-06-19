@@ -19,7 +19,7 @@ const CAT_COLOR: Record<string, string> = {
 };
 
 type ImportResult = {
-  summary: { fetched: number; outgoing: number; imported: number; updated: number };
+  summary: { fetched: number; outgoing: number; imported: number; skipped: number };
   preview: {
     fetched: number;
     incoming: number;
@@ -204,7 +204,7 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
           <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
             <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', marginBottom: 10 }}>
               Импортировано новых: <span style={{ color: 'var(--profit)' }}>{result.summary.imported}</span>
-              {result.summary.updated > 0 && <> · обновлено: {result.summary.updated}</>}
+              {result.summary.skipped > 0 && <> · уже было: {result.summary.skipped}</>}
               {' · '}расходов в файле: {result.preview.outgoing} на {rub(result.preview.sum)}
             </div>
             <div style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600, marginBottom: 12, display: 'flex', gap: 14, flexWrap: 'wrap' }}>
