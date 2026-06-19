@@ -6,6 +6,7 @@ import { EXPENSE_CATEGORIES, categoryLabel } from '@/lib/finance/categories';
 import type { ExpenseListItem } from '@/lib/db/finance-repo';
 
 const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
+const SESSION_EXPIRED = 'Сессия истекла — выйдите и войдите заново, затем повторите.';
 
 const CAT_COLOR: Record<string, string> = {
   produkty: '#2e7d5b',
@@ -68,6 +69,10 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
       body: JSON.stringify({ type: 'expense', pointId: 'point-1', date: addDate, amount: amt, category: addCat }),
     });
     setAddBusy(false);
+    if (res.status === 401) {
+      setAddMsg(SESSION_EXPIRED);
+      return;
+    }
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
       setAddMsg(`Ошибка: ${d.error ?? res.status}`);
@@ -90,10 +95,18 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
     const fd = new FormData();
     fd.set('file', file);
     const res = await fetch('/api/expenses/import-statement', { method: 'POST', body: fd });
-    const data = await res.json().catch(() => ({}));
     setBusy(false);
-    if (!res.ok) {
-      setMsg(data.error ?? 'Ошибка импорта');
+    if (res.status === 401) {
+      setMsg(SESSION_EXPIRED);
+      return;
+    }
+    const data = await res.json().catch(() => null);
+    if (!res.ok || !data) {
+      setMsg(data?.error ?? `Ошибка импорта (${res.status})`);
+      return;
+    }
+    if (!data.summary || !data.preview) {
+      setMsg('Неожиданный ответ сервера. Обновите страницу и попробуйте снова.');
       return;
     }
     setResult(data as ImportResult);
@@ -107,6 +120,10 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
     setRowBusy(id);
     const res = await fetch(`/api/finance/${id}`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category }) });
     setRowBusy(null);
+    if (res.status === 401) {
+      setMsg(SESSION_EXPIRED);
+      return;
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setMsg(`Не удалось сменить категорию: ${data.error ?? res.status}`);
@@ -120,6 +137,10 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
     setRowBusy(id);
     const res = await fetch(`/api/finance/${id}?type=expense`, { method: 'DELETE' });
     setRowBusy(null);
+    if (res.status === 401) {
+      setMsg(SESSION_EXPIRED);
+      return;
+    }
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
       setMsg(`Не удалось удалить: ${data.error ?? res.status}`);
