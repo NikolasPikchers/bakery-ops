@@ -1,8 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { monthRange, monthDays, prevMonth, monthsBack, monthShort } from '@/lib/finance/month';
 import { aggregateFinance, type FinanceSummary } from '@/lib/finance/dashboard-aggregate';
-import { currentOstatki, topSpisaniya, agingDesserts, type MovementRow } from './ops-aggregate';
-import { computePayrollTotal } from './fot-repo';
+import { computePayrollTotal, loadFot } from './fot-repo';
 import { FIXED_EXPENSES, FIXED_EXPENSE_CATEGORIES, proratedMonthly } from '@/lib/finance/fixed-expenses';
 
 export type DashboardPoint = 'all' | 'point-1' | 'point-2';
@@ -15,15 +14,15 @@ export type DashboardTrend = {
   margin: number[];
 };
 
+export type DayPoint = { date: string; amount: number };
+
 export type DashboardView = {
   point: DashboardPoint;
   month: string;
   finance: FinanceSummary;
   trend: DashboardTrend;
-  ostatki: ReturnType<typeof currentOstatki>;
-  spisaniya: ReturnType<typeof topSpisaniya>;
-  aging: ReturnType<typeof agingDesserts>;
-  sheetsQueue: { id: string; date: string; pointName: string; sheetType: string }[];
+  dailyExpense: DayPoint[];
+  dailyProfit: DayPoint[];
 };
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
@@ -31,9 +30,9 @@ const ym = (d: Date) => iso(d).slice(0, 7);
 
 export async function loadDashboard(
   prisma: PrismaClient,
-  opts: { point: DashboardPoint; month: string; asOf: string },
+  opts: { point: DashboardPoint; month: string },
 ): Promise<DashboardView> {
-  const { point, month, asOf } = opts;
+  const { point, month } = opts;
   const pointWhere = point === 'all' ? {} : { pointId: point };
   const { start, end } = monthRange(month);
   const prev = monthRange(prevMonth(month));
@@ -44,25 +43,22 @@ export async function loadDashboard(
   const trendMonths = monthsBack(month, 6);
   const trendStartD = new Date(`${monthRange(trendMonths[0]).start}T00:00:00.000Z`);
 
-  const [revCur, expCur, revPrev, expPrev, revTrend, expTrend, movements, sheets] = await Promise.all([
+  const [revCur, expCur, revPrev, expPrev, revTrend, expTrend] = await Promise.all([
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true, category: true } }),
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true, category: true } }),
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
-    prisma.movement.findMany({
-      where: { ...pointWhere },
-      include: { point: { select: { name: true } }, product: { select: { name: true, sheetType: true, shelfLifeDays: true } } },
-    }),
-    prisma.sheet.findMany({ where: { ...pointWhere, status: 'needs_review' }, orderBy: { createdAt: 'desc' }, take: 20, include: { point: { select: { name: true } } } }),
   ]);
 
   // ФОТ (нал мимо Т-Бизнес) — Плюшкино; подмешиваем в расходы синтетической строкой 'fot'.
-  // ФОТ на дашборде — только по сегодняшнюю дату (чтобы не обгонять внесённую выручку).
+  // Только по сегодняшнюю дату (чтобы не обгонять внесённую выручку). loadFot даёт и
+  // месячный итог, и разбивку по дням (dailyTotal) для графика затрат.
   const includeFot = point !== 'point-2';
   const todayIso = new Date().toISOString().slice(0, 10);
-  const fotCur = includeFot ? await computePayrollTotal(prisma, month, todayIso) : 0;
+  const fotView = includeFot ? await loadFot(prisma, month, todayIso) : null;
+  const fotCur = fotView?.totals.grand ?? 0;
   const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month), todayIso) : 0;
 
   // Аренда+коммуналка — фикс, равномерно по дням (как ФОТ). Фактические проводки из
@@ -91,6 +87,32 @@ export async function loadDashboard(
     prevExpense: prevExpenseActual + fotPrev + fixedPrev,
   });
 
+  // Затраты и прибыль по дням (для графиков). Затраты/день = реальные траты (без
+  // аренды/коммуналки) + ФОТ/день + равномерная доля аренды+коммуналки. Сумма по
+  // дням сходится с месячным расходом из finance.
+  const days = monthDays(month);
+  const fullDays = days.length;
+  const fixedExpPerDay = includeFixed ? FIXED_EXPENSES.reduce((s, f) => s + f.monthly, 0) / fullDays : 0;
+  const fotByDate = new Map((fotView?.dailyTotal ?? []).map((d) => [d.date, d.amount] as [string, number]));
+  const realExpByDate = new Map<string, number>();
+  for (const e of expCur) {
+    if (isDroppedFixed(e.category)) continue;
+    const k = iso(e.date);
+    realExpByDate.set(k, (realExpByDate.get(k) ?? 0) + Number(e.amount));
+  }
+  const revByDate = new Map<string, number>();
+  for (const r of revCur) {
+    const k = iso(r.date);
+    revByDate.set(k, (revByDate.get(k) ?? 0) + Number(r.amount));
+  }
+  const dailyExpense: DayPoint[] = days.map((date) => {
+    const real = realExpByDate.get(date) ?? 0;
+    const fot = fotByDate.get(date) ?? 0;
+    const fixed = date <= todayIso ? fixedExpPerDay : 0;
+    return { date, amount: real + fot + fixed };
+  });
+  const dailyProfit: DayPoint[] = days.map((date, i) => ({ date, amount: (revByDate.get(date) ?? 0) - dailyExpense[i].amount }));
+
   // 6-месячный тренд для спарклайнов KPI
   const revByMonth = new Map<string, number>();
   const expByMonth = new Map<string, number>();
@@ -107,28 +129,5 @@ export async function loadDashboard(
     }),
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const rows: MovementRow[] = movements.map((m: any) => ({
-    pointId: m.pointId,
-    pointName: m.point.name,
-    productId: m.productId,
-    productName: m.product.name,
-    sheetType: m.product.sheetType,
-    date: iso(m.date),
-    prihod: m.prihod,
-    ostatok: m.ostatok,
-    spisanie: m.spisanie,
-    shelfLifeDays: m.product.shelfLifeDays,
-  }));
-
-  return {
-    point,
-    month,
-    finance,
-    trend,
-    ostatki: currentOstatki(rows),
-    spisaniya: topSpisaniya(rows, start, end),
-    aging: agingDesserts(rows, asOf),
-    sheetsQueue: sheets.map((s) => ({ id: s.id, date: iso(s.createdAt), pointName: s.point.name, sheetType: s.sheetType })),
-  };
+  return { point, month, finance, trend, dailyExpense, dailyProfit };
 }

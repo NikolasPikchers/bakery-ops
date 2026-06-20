@@ -4,7 +4,7 @@ import { loadDashboard, type DashboardPoint } from '@/lib/db/dashboard-repo';
 import { currentMonth, monthLabel, prevMonth, nextMonth } from '@/lib/finance/month';
 import { categoryLabel } from '@/lib/finance/categories';
 import { POINTS } from '@/lib/domain/points';
-import { Sparkline, Donut, DayBars } from './_charts';
+import { Sparkline, Donut, DailyBars, ProfitBars } from './_charts';
 import styles from './ui.module.css';
 
 export const runtime = 'nodejs';
@@ -22,15 +22,6 @@ const CAT_COLOR: Record<string, string> = {
   investicii: '#14b8a6',
   prochee: '#d8dedb',
 };
-
-const STATUS: Record<string, { t: string; c: string; bg: string }> = {
-  needs_review: { t: 'Проверить', c: '#e0a458', bg: 'rgba(224,164,88,0.16)' },
-  recognized: { t: 'Распознан', c: '#5b8def', bg: 'rgba(91,141,239,0.14)' },
-  confirmed: { t: 'Подтверждён', c: '#2e7d5b', bg: 'rgba(46,125,91,0.14)' },
-  uploaded: { t: 'Загружен', c: '#8a958f', bg: '#f1f4f2' },
-};
-
-const SHEET_TYPE_RU: Record<string, string> = { pies: 'Пироги', desserts: 'Десерты', confectionery_freeform: 'Кондитерка' };
 
 function DeltaBadge({ v, invert, unit = '%', on }: { v: number | null; invert?: boolean; unit?: string; on?: boolean }) {
   if (v == null) return null;
@@ -108,20 +99,15 @@ function Panel({ title, extra, children }: { title: string; extra?: React.ReactN
   );
 }
 
-const th: React.CSSProperties = { fontSize: 11, color: 'var(--muted)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.04em', padding: '0 0 9px', textAlign: 'left' };
-const td: React.CSSProperties = { padding: '10px 0', fontSize: 13.5, borderTop: '1px solid var(--line)' };
-
 export default async function Dashboard({ searchParams }: { searchParams: Promise<{ point?: string; month?: string }> }) {
   const sp = await searchParams;
   const point: DashboardPoint = sp.point === 'point-1' || sp.point === 'point-2' ? sp.point : 'all';
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? '') ? (sp.month as string) : currentMonth(new Date());
-  const asOf = currentMonth(new Date()) === month ? new Date().toISOString().slice(0, 10) : `${month}-28`;
 
-  const v = await loadDashboard(getPrisma(), { point, month, asOf });
+  const v = await loadDashboard(getPrisma(), { point, month });
   const f = v.finance;
   const expenseTotal = f.byCategory.reduce((s, c) => s + c.amount, 0);
   const q = (p: DashboardPoint, mo: string) => `/?point=${p}&month=${mo}`;
-  const showAging = point === 'all' || point === 'point-2';
   const pills: { id: DashboardPoint; name: string }[] = [{ id: 'all', name: 'Все' }, ...POINTS.map((p) => ({ id: p.id as DashboardPoint, name: p.name }))];
 
   return (
@@ -166,7 +152,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           {f.revenue === 0 ? (
             <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '40px 2px' }}>Нет выручки за месяц. Внесите её на странице <Link href="/revenue" style={{ color: 'var(--profit)', fontWeight: 700 }}>Выручка</Link>.</p>
           ) : (
-            <DayBars data={f.byDay} color="#2563eb" height={178} />
+            <DailyBars data={f.byDay.map((d) => ({ date: d.date, value: d.revenue }))} color="#2563eb" height={178} />
           )}
         </Panel>
         <Panel title="Структура расходов">
@@ -188,90 +174,25 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
         </Panel>
       </div>
 
-      {/* row 2: остатки + залежалось */}
-      <div className={styles.dashRow}>
-        <Panel title="Остатки сейчас" extra={<span style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>распознано из листов</span>}>
-          {v.ostatki.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '12px 2px' }}>Нет данных. Загрузите листы во вкладке «Загрузить».</p>
+      {/* Затраты по дням */}
+      <div style={{ marginBottom: 18 }}>
+        <Panel title="Затраты по дням" extra={<span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}><span style={{ width: 10, height: 10, borderRadius: 4, background: 'var(--expense)' }} />₽/день · ФОТ и аренда размазаны по дням</span>}>
+          {f.expense === 0 ? (
+            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '40px 2px' }}>Нет затрат за месяц.</p>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th}>Товар</th><th style={th}>Точка</th><th style={{ ...th, textAlign: 'right' }}>Остаток</th></tr></thead>
-              <tbody>
-                {v.ostatki.map((o, i) => (
-                  <tr key={i}>
-                    <td style={{ ...td, fontWeight: 700, color: 'var(--ink)' }}>{o.productName}</td>
-                    <td style={{ ...td, color: 'var(--muted)', fontWeight: 600 }}>{o.pointName}</td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{o.ostatok}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-        <Panel title="Залежалось · Корица" extra={<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--expense)" strokeWidth="1.8"><path d="M12 2s5 4 5 9a5 5 0 0 1-10 0c0-1.5.6-2.8 1.4-3.8C8.9 8.6 9 10 10 10c1.3 0 1-2.5 1-4 0-2 1-4 1-4Z" strokeLinecap="round" strokeLinejoin="round" /></svg>}>
-          {!showAging ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '12px 2px' }}>Доступно для Корицы.</p>
-          ) : v.aging.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '12px 2px' }}>Нет залежавшихся позиций.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th}>Десерт</th><th style={{ ...th, textAlign: 'right' }}>Возраст</th><th style={{ ...th, textAlign: 'right' }}>Ост.</th></tr></thead>
-              <tbody>
-                {v.aging.map((a, i) => (
-                  <tr key={i} style={a.stale ? { background: 'rgba(224,164,88,0.1)' } : undefined}>
-                    <td style={{ ...td, fontWeight: 700, color: 'var(--ink)' }}>{a.productName}</td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: a.stale ? '#b9772a' : 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>{a.ageDays == null ? '—' : `${a.ageDays} дн`}</td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums' }}>{a.ostatok}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <DailyBars data={v.dailyExpense.map((d) => ({ date: d.date, value: d.amount }))} color="var(--expense)" height={178} />
           )}
         </Panel>
       </div>
 
-      {/* row 3: списания + листы */}
-      <div className={`${styles.dashRow} ${styles.last}`}>
-        <Panel title="Списания за месяц" extra={<span style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>топ позиций</span>}>
-          {v.spisaniya.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '12px 2px' }}>Нет списаний.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th}>Товар</th><th style={th}>Точка</th><th style={{ ...th, textAlign: 'right' }}>Списано</th></tr></thead>
-              <tbody>
-                {v.spisaniya.slice(0, 10).map((s, i) => (
-                  <tr key={i}>
-                    <td style={{ ...td, fontWeight: 700, color: 'var(--ink)' }}>{s.productName}</td>
-                    <td style={{ ...td, color: 'var(--muted)', fontWeight: 600 }}>{s.pointName}</td>
-                    <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--expense)', fontVariantNumeric: 'tabular-nums' }}>{s.total}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-        <Panel title="Листы на проверке" extra={<Link href="/sheets" style={{ fontSize: 12.5, color: 'var(--profit)', fontWeight: 700 }}>Открыть</Link>}>
-          {v.sheetsQueue.length === 0 ? (
-            <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '12px 2px' }}>Очередь пуста.</p>
-          ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead><tr><th style={th}>Дата</th><th style={th}>Точка</th><th style={{ ...th, textAlign: 'right' }}></th></tr></thead>
-              <tbody>
-                {v.sheetsQueue.map((s) => {
-                  const st = STATUS.needs_review;
-                  return (
-                    <tr key={s.id}>
-                      <td style={{ ...td, color: 'var(--muted)', fontWeight: 600 }}>{s.date}</td>
-                      <td style={{ ...td, fontWeight: 700, color: 'var(--ink)' }}><Link href={`/sheets/${s.id}`}>{s.pointName} · {SHEET_TYPE_RU[s.sheetType] ?? s.sheetType}</Link></td>
-                      <td style={{ ...td, textAlign: 'right' }}><span style={{ fontSize: 11.5, fontWeight: 700, color: st.c, background: st.bg, padding: '3px 9px', borderRadius: 7, whiteSpace: 'nowrap' }}>{st.t}</span></td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          )}
-        </Panel>
-      </div>
+      {/* Чистая прибыль / убыток по дням */}
+      <Panel title="Прибыль / убыток по дням" extra={<span style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 4, background: 'var(--profit)' }} />прибыль</span><span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ width: 10, height: 10, borderRadius: 4, background: 'var(--expense)' }} />убыток</span></span>}>
+        {f.revenue === 0 && f.expense === 0 ? (
+          <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600, padding: '40px 2px' }}>Нет данных за месяц.</p>
+        ) : (
+          <ProfitBars data={v.dailyProfit.map((d) => ({ date: d.date, value: d.amount }))} height={196} />
+        )}
+      </Panel>
     </div>
   );
 }

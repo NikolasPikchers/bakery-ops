@@ -122,18 +122,53 @@ export function Donut({
   );
 }
 
-/** Бары выручки по дням: подписи дней снизу + тултип (дата · выручка) на наведение. */
-export function DayBars({ data, color = '#2563eb', height = 170 }: { data: { date: string; revenue: number }[]; color?: string; height?: number }) {
-  const max = Math.max(1, ...data.map((d) => d.revenue));
+/** Бары значения по дням (выручка/затраты): подписи дней снизу + тултип (дата · сумма). */
+export function DailyBars({ data, color = '#2563eb', height = 170 }: { data: { date: string; value: number }[]; color?: string; height?: number }) {
+  const max = Math.max(1, ...data.map((d) => d.value));
   return (
     <div>
       <div className={styles.bars2} style={{ height }}>
         {data.map((d, i) => (
           <div key={i} className={styles.barCol}>
-            <span className={styles.barTip}>{dayLabel(d.date)} · {rub(d.revenue)}</span>
-            <span className={styles.bar} style={{ height: `${Math.max(2, (d.revenue / max) * 100)}%`, background: color }} />
+            <span className={styles.barTip}>{dayLabel(d.date)} · {rub(d.value)}</span>
+            <span className={styles.bar} style={{ height: `${Math.max(2, (d.value / max) * 100)}%`, background: color }} />
           </div>
         ))}
+      </div>
+      <div className={styles.barAxis}>
+        {data.map((d, i) => {
+          const day = Number(d.date.slice(8, 10));
+          return <span key={i} className={styles.barAxisCell}>{day % 5 === 0 ? day : ''}</span>;
+        })}
+      </div>
+    </div>
+  );
+}
+
+/** Расходящиеся бары прибыли/убытка по дням: вверх (зелёный) — прибыль, вниз (красный) — убыток. */
+export function ProfitBars({ data, height = 178 }: { data: { date: string; value: number }[]; height?: number }) {
+  const maxAbs = Math.max(1, ...data.map((d) => Math.abs(d.value)));
+  return (
+    <div>
+      <div className={styles.divBars} style={{ height }}>
+        <span className={styles.divZero} />
+        {data.map((d, i) => {
+          const pos = d.value >= 0;
+          const h = (Math.abs(d.value) / maxAbs) * 50; // доля от половины высоты
+          return (
+            <div key={i} className={styles.divCol}>
+              <span className={styles.barTip}>{dayLabel(d.date)} · {pos ? 'прибыль' : 'убыток'} {rub(Math.abs(d.value))}</span>
+              <span
+                className={styles.divBar}
+                style={{
+                  height: `${d.value === 0 ? 0 : Math.max(1.5, h)}%`,
+                  background: pos ? 'var(--profit)' : 'var(--expense)',
+                  ...(pos ? { bottom: '50%', borderRadius: '3px 3px 0 0' } : { top: '50%', borderRadius: '0 0 3px 3px' }),
+                }}
+              />
+            </div>
+          );
+        })}
       </div>
       <div className={styles.barAxis}>
         {data.map((d, i) => {

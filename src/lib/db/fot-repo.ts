@@ -76,7 +76,10 @@ export function buildFot(args: {
   }));
   const fixedTotal = fixed.reduce((s, f) => s + f.total, 0);
 
-  const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay, 0) }));
+  // ФОТ за день = ЗП сотрудников за день + равномерная доля фикс-окладов (для графиков).
+  // Сумма по дням == totals.grand (на учитываемом диапазоне дней).
+  const fixedPerDay = fullDays > 0 ? fixedSalaries.reduce((s, f) => s + f.monthly, 0) / fullDays : 0;
+  const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay, 0) + fixedPerDay }));
   const sumBy = (rs: FotRow[], k: (r: FotRow) => number) => rs.reduce((s, r) => s + k(r), 0);
   const totals = {
     bakeryTo15: sumBy(bakery, (r) => r.payTo15),
