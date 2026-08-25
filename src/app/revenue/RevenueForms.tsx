@@ -80,8 +80,10 @@ export function RevenueForms() {
       <section className={styles.card} style={{ margin: 0, maxWidth: 'none' }}>
         <h3>Плюшкино · загрузка из iiko (xlsx)</h3>
         <p style={{ fontSize: 13, color: 'var(--muted)' }}>
-          Дневные выгрузки продаж из iiko (по одному файлу на день). Дата берётся из имени файла
-          (<code>…_ДД.ММ.ГГ.xlsx</code>), выручка — сумма колонки «…по выручке». Можно выбрать несколько файлов.
+          Дневные выгрузки продаж из iiko — оба формата: «Табличные данные» и «Категории и блюда».
+          Дата берётся из шапки отчёта («Период»), а если её нет — из имени файла (<code>…_ДД.ММ.ГГ.xlsx</code>).
+          Выручка — колонка «Сумма продажи» / «…по выручке» по строкам-блюдам. Если период в отчёте больше одного
+          дня, сумма делится поровну по дням. Можно выбрать несколько файлов.
         </p>
         <form onSubmit={uploadXlsx} style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
           <input type="file" accept=".xlsx" multiple onChange={(e) => setFiles(e.target.files)} />

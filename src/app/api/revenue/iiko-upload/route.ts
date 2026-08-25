@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { getPrisma } from '@/lib/db/client';
-import { parseSalesXlsx, dateFromFilename } from '@/lib/iiko/parse-sales-xlsx';
+import { parseSalesXlsx } from '@/lib/iiko/parse-sales-xlsx';
+import { salesDaysFromFile } from '@/lib/iiko/sales-days';
 import { upsertImportedRevenue } from '@/lib/db/revenue-import-repo';
 
 export const runtime = 'nodejs';
@@ -22,23 +23,50 @@ export async function POST(req: Request) {
   let updated = 0;
 
   for (const f of files) {
-    const date = dateFromFilename(f.name);
-    if (!date) {
-      results.push({ file: f.name, date: null, status: 'нет даты в имени файла' });
+    let parsed;
+    try {
+      parsed = await parseSalesXlsx(await f.arrayBuffer());
+    } catch (e) {
+      results.push({ file: f.name, date: null, status: e instanceof Error ? e.message : 'ошибка чтения xlsx' });
       continue;
     }
+
+    const resolved = salesDaysFromFile(f.name, parsed);
+    if (!resolved.ok) {
+      results.push({ file: f.name, date: null, status: resolved.error });
+      continue;
+    }
+    const label = resolved.from === resolved.till ? resolved.from : `${resolved.from} — ${resolved.till}`;
+    if (!(parsed.total > 0)) {
+      results.push({ file: f.name, date: label, amount: 0, status: 'выручка 0 — пропущено' });
+      continue;
+    }
+
     try {
-      const { total, confectionery } = await parseSalesXlsx(await f.arrayBuffer());
-      if (!(total > 0)) {
-        results.push({ file: f.name, date, amount: 0, status: 'выручка 0 — пропущено' });
-        continue;
+      let added = 0;
+      let changed = 0;
+      for (const d of resolved.days) {
+        const r = await upsertImportedRevenue(prisma, {
+          pointId: POINT,
+          date: d.date,
+          amount: d.amount,
+          confectionery: d.confectionery,
+          source: 'iiko',
+        });
+        if (r === 'imported') added++;
+        else changed++;
       }
-      const r = await upsertImportedRevenue(prisma, { pointId: POINT, date, amount: total, confectionery, source: 'iiko' });
-      if (r === 'imported') imported++;
-      else updated++;
-      results.push({ file: f.name, date, amount: total, status: r === 'imported' ? 'добавлено' : 'обновлено' });
+      imported += added;
+      updated += changed;
+      const what = added > 0 && changed > 0 ? `добавлено ${added}, обновлено ${changed}` : added > 0 ? 'добавлено' : 'обновлено';
+      results.push({
+        file: f.name,
+        date: label,
+        amount: parsed.total,
+        status: resolved.days.length > 1 ? `${what} · разбито по ${resolved.days.length} дн` : what,
+      });
     } catch {
-      results.push({ file: f.name, date, status: 'ошибка чтения xlsx' });
+      results.push({ file: f.name, date: label, status: 'ошибка записи в БД' });
     }
   }
 
