@@ -65,13 +65,15 @@ function KpiTile(props: {
   valueColor?: string;
   delta: number | null;
   deltaUnit?: string;
+  /** Подпись под дельтой: «к пр. месяцу» или окно «к 1–4 авг.». */
+  deltaLabel: string;
   invert?: boolean;
   spark: number[];
   sparkColor: string;
   sparkId: string;
   lead?: boolean;
 }) {
-  const { label, value, valueColor, delta, deltaUnit, invert, spark, sparkColor, sparkId, lead } = props;
+  const { label, value, valueColor, delta, deltaUnit, deltaLabel, invert, spark, sparkColor, sparkId, lead } = props;
   return (
     <div style={{ ...cardStyle, ...(lead ? { background: 'var(--profit)', border: 'none', color: '#fff' } : {}), display: 'flex', flexDirection: 'column', gap: 8 }}>
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
@@ -80,7 +82,7 @@ function KpiTile(props: {
       </div>
       <div style={{ fontSize: lead ? 32 : 26, fontWeight: 800, letterSpacing: '-0.02em', fontVariantNumeric: 'tabular-nums', color: lead ? '#fff' : valueColor || 'var(--ink)' }}>{value}</div>
       <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 8 }}>
-        <span style={{ fontSize: 12, fontWeight: 600, color: lead ? 'rgba(255,255,255,0.8)' : 'var(--muted)' }}>{delta == null ? 'нет базы' : 'к пр. месяцу'}</span>
+        <span style={{ fontSize: 12, fontWeight: 600, color: lead ? 'rgba(255,255,255,0.8)' : 'var(--muted)' }}>{delta == null ? 'нет базы' : deltaLabel}</span>
         <Sparkline data={spark} id={sparkId} width={96} height={26} color={lead ? '#bdf0d3' : sparkColor} />
       </div>
     </div>
@@ -140,10 +142,10 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
 
       {/* KPI row */}
       <div className={styles.dashKpis}>
-        <KpiTile lead label="Чистая прибыль" value={rub(f.profit)} delta={f.profitDelta} spark={v.trend.profit} sparkColor="#bdf0d3" sparkId="sp-profit" />
-        <KpiTile label="Выручка · iiko" value={rub(f.revenue)} valueColor="var(--revenue)" delta={f.revenueDelta} spark={v.trend.revenue} sparkColor="var(--revenue)" sparkId="sp-rev" />
-        <KpiTile label="Расходы · Т-Бизнес" value={rub(f.expense)} valueColor="var(--expense)" delta={f.expenseDelta} invert spark={v.trend.expense} sparkColor="var(--expense)" sparkId="sp-exp" />
-        <KpiTile label="Маржинальность" value={f.margin == null ? '—' : `${f.margin.toFixed(1)}%`} delta={f.marginDelta} deltaUnit="п.п." spark={v.trend.margin} sparkColor="var(--profit)" sparkId="sp-mar" />
+        <KpiTile lead label="Чистая прибыль" value={rub(f.profit)} delta={f.profitDelta} deltaLabel={v.deltaLabel} spark={v.trend.profit} sparkColor="#bdf0d3" sparkId="sp-profit" />
+        <KpiTile label="Выручка · iiko" value={rub(f.revenue)} valueColor="var(--revenue)" delta={f.revenueDelta} deltaLabel={v.deltaLabel} spark={v.trend.revenue} sparkColor="var(--revenue)" sparkId="sp-rev" />
+        <KpiTile label="Расходы · Т-Бизнес" value={rub(f.expense)} valueColor="var(--expense)" delta={f.expenseDelta} deltaLabel={v.deltaLabel} invert spark={v.trend.expense} sparkColor="var(--expense)" sparkId="sp-exp" />
+        <KpiTile label="Маржинальность" value={f.margin == null ? '—' : `${f.margin.toFixed(1)}%`} delta={f.marginDelta} deltaUnit="п.п." deltaLabel={v.deltaLabel} spark={v.trend.margin} sparkColor="var(--profit)" sparkId="sp-mar" />
       </div>
 
       {/* row 1: revenue by day + expense structure */}

@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { monthRange, monthDays, prevMonth, monthsBack, monthShort } from '@/lib/finance/month';
 import { aggregateFinance, type FinanceSummary } from '@/lib/finance/dashboard-aggregate';
+import { compareWindow } from '@/lib/finance/compare-window';
 import { computePayrollTotal, loadFot } from './fot-repo';
 import { FIXED_EXPENSES, FIXED_EXPENSE_CATEGORIES, proratedMonthly } from '@/lib/finance/fixed-expenses';
 
@@ -20,6 +21,8 @@ export type DashboardView = {
   point: DashboardPoint;
   month: string;
   finance: FinanceSummary;
+  /** Подпись дельт KPI: «к пр. месяцу» либо честное окно «к 1–4 авг.». */
+  deltaLabel: string;
   trend: DashboardTrend;
   dailyExpense: DayPoint[];
   dailyProfit: DayPoint[];
@@ -46,45 +49,71 @@ export async function loadDashboard(
   const [revCur, expCur, revPrev, expPrev, revTrend, expTrend] = await Promise.all([
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: startD, lt: endD } }, select: { date: true, amount: true, category: true } }),
-    prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true } }),
-    prisma.expense.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { amount: true, category: true } }),
+    prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { date: true, amount: true } }),
+    prisma.expense.findMany({ where: { ...pointWhere, date: { gte: prevStartD, lt: prevEndD } }, select: { date: true, amount: true, category: true } }),
     prisma.revenue.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
     prisma.expense.findMany({ where: { ...pointWhere, date: { gte: trendStartD, lt: endD } }, select: { date: true, amount: true } }),
   ]);
+
+  const todayIso = new Date().toISOString().slice(0, 10);
+
+  // Окно сравнения «к пр. месяцу»: для текущего месяца — одинаковые дни 1..D с обеих
+  // сторон (иначе в начале месяца сравниваем 3 дня с полным месяцем и дельты бессмысленны),
+  // для закрытых месяцев — полный месяц к полному. Большие цифры остаются за полный месяц.
+  const lastRevenueDate = revCur.length > 0 ? revCur.map((r) => iso(r.date)).sort().at(-1)! : null;
+  const win = compareWindow({ month, todayIso, lastRevenueDate });
+  const inPrevWindow = (d: Date) => win.mode === 'full' || iso(d) <= win.prevUpTo;
+  const prevCap = win.mode === 'mtd' ? win.prevUpTo : todayIso;
 
   // ФОТ (нал мимо Т-Бизнес) — Плюшкино; подмешиваем в расходы синтетической строкой 'fot'.
   // Только по сегодняшнюю дату (чтобы не обгонять внесённую выручку). loadFot даёт и
   // месячный итог, и разбивку по дням (dailyTotal) для графика затрат.
   const includeFot = point !== 'point-2';
-  const todayIso = new Date().toISOString().slice(0, 10);
   const fotView = includeFot ? await loadFot(prisma, month, todayIso) : null;
   const fotCur = fotView?.totals.grand ?? 0;
-  const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month), todayIso) : 0;
+  const fotPrev = includeFot ? await computePayrollTotal(prisma, prevMonth(month), prevCap) : 0;
 
   // Аренда+коммуналка — фикс, равномерно по дням (как ФОТ). Фактические проводки из
   // выписки по этим категориям на дашборде ИГНОРИРУЕМ, чтобы не задвоить. Только Плюшкино.
   const includeFixed = point !== 'point-2';
   const isDroppedFixed = (cat: string) => includeFixed && FIXED_EXPENSE_CATEGORIES.has(cat);
-  const fixedRows = (m: string) =>
+  const fixedRows = (m: string, upTo: string) =>
     includeFixed
-      ? FIXED_EXPENSES.map((f) => ({ date: start, amount: proratedMonthly(f.monthly, m, todayIso), category: f.category })).filter((r) => r.amount > 0)
+      ? FIXED_EXPENSES.map((f) => ({ date: start, amount: proratedMonthly(f.monthly, m, upTo), category: f.category })).filter((r) => r.amount > 0)
       : [];
 
   const expensesInput = expCur
     .filter((e) => !isDroppedFixed(e.category))
     .map((e) => ({ date: iso(e.date), amount: Number(e.amount), category: e.category }));
   if (fotCur > 0) expensesInput.push({ date: start, amount: fotCur, category: 'fot' });
-  expensesInput.push(...fixedRows(month));
+  expensesInput.push(...fixedRows(month, todayIso));
 
-  const prevExpenseActual = expPrev.filter((e) => !isDroppedFixed(e.category)).reduce((a, e) => a + Number(e.amount), 0);
-  const fixedPrev = fixedRows(prevMonth(month)).reduce((s, r) => s + r.amount, 0);
+  const prevExpenseActual = expPrev
+    .filter((e) => inPrevWindow(e.date) && !isDroppedFixed(e.category))
+    .reduce((a, e) => a + Number(e.amount), 0);
+  const fixedPrev = fixedRows(prevMonth(month), prevCap).reduce((s, r) => s + r.amount, 0);
+
+  // Числители дельт для текущего месяца — те же дни 1..D (реальные траты + ФОТ + фикс по окну).
+  let windowRevenue: number | undefined;
+  let windowExpense: number | undefined;
+  if (win.mode === 'mtd') {
+    windowRevenue = revCur.filter((r) => iso(r.date) <= win.curUpTo).reduce((a, r) => a + Number(r.amount), 0);
+    const realExpWindow = expCur
+      .filter((e) => !isDroppedFixed(e.category) && iso(e.date) <= win.curUpTo)
+      .reduce((a, e) => a + Number(e.amount), 0);
+    const fotWindow = (fotView?.dailyTotal ?? []).filter((d) => d.date <= win.curUpTo).reduce((s, d) => s + d.amount, 0);
+    const fixedWindow = fixedRows(month, win.curUpTo).reduce((s, r) => s + r.amount, 0);
+    windowExpense = realExpWindow + fotWindow + fixedWindow;
+  }
 
   const finance = aggregateFinance({
     monthDays: monthDays(month),
     revenues: revCur.map((r) => ({ date: iso(r.date), amount: Number(r.amount) })),
     expenses: expensesInput,
-    prevRevenue: revPrev.reduce((a, r) => a + Number(r.amount), 0),
+    prevRevenue: revPrev.filter((r) => inPrevWindow(r.date)).reduce((a, r) => a + Number(r.amount), 0),
     prevExpense: prevExpenseActual + fotPrev + fixedPrev,
+    windowRevenue,
+    windowExpense,
   });
 
   // Затраты и прибыль по дням (для графиков). Затраты/день = реальные траты (без
@@ -129,5 +158,5 @@ export async function loadDashboard(
     }),
   };
 
-  return { point, month, finance, trend, dailyExpense, dailyProfit };
+  return { point, month, finance, deltaLabel: win.label, trend, dailyExpense, dailyProfit };
 }

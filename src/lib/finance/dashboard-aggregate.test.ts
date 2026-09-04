@@ -48,6 +48,20 @@ describe('aggregateFinance', () => {
     ]);
   });
 
+  it('окно сравнения: дельты от windowRevenue/windowExpense, итоги месяца не меняются', () => {
+    const r = aggregateFinance({ ...input, windowRevenue: 30000, windowExpense: 20000 });
+    // большие цифры — как были (полный месяц)
+    expect(r.revenue).toBe(35000);
+    expect(r.expense).toBe(34000);
+    expect(r.profit).toBe(1000);
+    expect(r.margin).toBeCloseTo((1000 / 35000) * 100, 4);
+    // дельты — от оконных значений: окно 30000/20000 против базы 25000/20000
+    expect(r.revenueDelta).toBeCloseTo(((30000 - 25000) / 25000) * 100, 4);
+    expect(r.expenseDelta).toBeCloseTo(0, 4);
+    expect(r.profitDelta).toBeCloseTo(((10000 - 5000) / 5000) * 100, 4); // окно 10000 vs пред. 5000
+    expect(r.marginDelta).toBeCloseTo((10000 / 30000) * 100 - (5000 / 25000) * 100, 4);
+  });
+
   it('margin null when revenue is 0; deltas null when prev is 0', () => {
     const r = aggregateFinance({ monthDays: ['2026-06-01'], revenues: [], expenses: [], prevRevenue: 0, prevExpense: 0 });
     expect(r.revenue).toBe(0);

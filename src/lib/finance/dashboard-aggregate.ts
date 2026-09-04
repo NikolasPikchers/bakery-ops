@@ -4,6 +4,13 @@ export type FinanceAggInput = {
   expenses: { date: string; amount: number; category: string }[];
   prevRevenue: number;
   prevExpense: number;
+  /**
+   * Итоги окна сравнения текущего месяца (дни 1..D) — числители дельт.
+   * Не заданы → дельты от полных итогов месяца (закрытые месяцы).
+   * Большие цифры (revenue/expense/profit/margin) всегда за полный месяц.
+   */
+  windowRevenue?: number;
+  windowExpense?: number;
 };
 
 export type FinanceSummary = {
@@ -35,6 +42,12 @@ export function aggregateFinance(input: FinanceAggInput): FinanceSummary {
   const prevProfit = input.prevRevenue - input.prevExpense;
   const prevMargin = input.prevRevenue === 0 ? null : (prevProfit / input.prevRevenue) * 100;
 
+  // Числители дельт: окно сравнения (если задано) либо полные итоги месяца.
+  const wRevenue = input.windowRevenue ?? revenue;
+  const wExpense = input.windowExpense ?? expense;
+  const wProfit = wRevenue - wExpense;
+  const wMargin = wRevenue === 0 ? null : (wProfit / wRevenue) * 100;
+
   const byDay = input.monthDays.map((date) => ({
     date,
     revenue: sum(input.revenues.filter((r) => r.date === date).map((r) => r.amount)),
@@ -52,10 +65,10 @@ export function aggregateFinance(input: FinanceAggInput): FinanceSummary {
     expense,
     profit,
     margin,
-    revenueDelta: pctDelta(revenue, input.prevRevenue),
-    expenseDelta: pctDelta(expense, input.prevExpense),
-    profitDelta: pctDelta(profit, prevProfit),
-    marginDelta: margin == null || prevMargin == null ? null : margin - prevMargin,
+    revenueDelta: pctDelta(wRevenue, input.prevRevenue),
+    expenseDelta: pctDelta(wExpense, input.prevExpense),
+    profitDelta: pctDelta(wProfit, prevProfit),
+    marginDelta: wMargin == null || prevMargin == null ? null : wMargin - prevMargin,
     byDay,
     byCategory,
   };
