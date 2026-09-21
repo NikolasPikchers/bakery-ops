@@ -44,7 +44,7 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 18, flexWrap: 'wrap', gap: 14 }}>
         <div>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.03em', color: 'var(--ink)' }}>Разбивка выручки</h1>
-          <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>Плюшкино · кондитерка vs пироги+прочее, по дням</p>
+          <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 2 }}>Плюшкино · пироги+прочее vs кондитерка, по дням</p>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', padding: '6px 8px', borderRadius: 12, border: '1px solid var(--line)' }}>
           <Link href={q(prevMonth(month))} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 17 }}>‹</Link>
@@ -62,14 +62,14 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 16, marginBottom: 18 }}>
-            <Kpi label="Кондитерка" value={rub(t.confectionery)} color={CONF} sub={`${confPct}% выручки`} />
             <Kpi label="Пироги + прочее" value={rub(t.other)} color={OTHER} sub={`${100 - confPct}% выручки`} />
+            <Kpi label="Кондитерка" value={rub(t.confectionery)} color={CONF} sub={`${confPct}% выручки`} />
             <Kpi label="Всего за месяц" value={rub(t.total)} />
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(170px,1fr))', gap: 16, marginBottom: 18 }}>
-            <Kpi label="Кондитерка / день" value={rub(avg(t.confectionery))} color={CONF} sub={`в среднем за ${n} дн`} />
             <Kpi label="Пироги+прочее / день" value={rub(avg(t.other))} color={OTHER} sub={`в среднем за ${n} дн`} />
+            <Kpi label="Кондитерка / день" value={rub(avg(t.confectionery))} color={CONF} sub={`в среднем за ${n} дн`} />
             <Kpi label="Всего / день" value={rub(avg(t.total))} sub={`в среднем за ${n} дн`} />
           </div>
 
@@ -77,8 +77,8 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 12 }}>
               <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>По дням</div>
               <div style={{ display: 'flex', gap: 14, fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>
-                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Dot c={CONF} />Кондитерка</span>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Dot c={OTHER} />Пироги+прочее</span>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Dot c={CONF} />Кондитерка</span>
               </div>
             </div>
             <StackBars data={v.days} height={200} confColor={CONF} otherColor={OTHER} />
@@ -89,8 +89,8 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
               <thead>
                 <tr>
                   <th style={th}>Дата</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Кондитерка</th>
                   <th style={{ ...th, textAlign: 'right' }}>Пироги+прочее</th>
+                  <th style={{ ...th, textAlign: 'right' }}>Кондитерка</th>
                   <th style={{ ...th, textAlign: 'right' }}>Всего</th>
                   <th style={{ ...th, textAlign: 'right' }}>Доля конд.</th>
                 </tr>
@@ -99,8 +99,8 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
                 {v.days.map((d) => (
                   <tr key={d.date}>
                     <td style={{ ...td, fontWeight: 700, color: 'var(--ink)' }}>{d.date.slice(8, 10)}.{d.date.slice(5, 7)}</td>
-                    <td style={{ ...td, textAlign: 'right', color: '#b9772a', fontWeight: 700 }}>{rub(d.confectionery)}</td>
                     <td style={{ ...td, textAlign: 'right', color: OTHER, fontWeight: 700 }}>{rub(d.other)}</td>
+                    <td style={{ ...td, textAlign: 'right', color: '#b9772a', fontWeight: 700 }}>{rub(d.confectionery)}</td>
                     <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--ink)' }}>{rub(d.total)}</td>
                     <td style={{ ...td, textAlign: 'right', color: 'var(--muted)', fontWeight: 700 }}>{d.total > 0 ? Math.round((d.confectionery / d.total) * 100) : 0}%</td>
                   </tr>
@@ -109,8 +109,8 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
               <tfoot>
                 <tr>
                   <td style={{ ...td, fontWeight: 800, color: 'var(--ink)', borderTop: '2px solid var(--line)' }}>Итого</td>
-                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: '#b9772a', borderTop: '2px solid var(--line)' }}>{rub(t.confectionery)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: OTHER, borderTop: '2px solid var(--line)' }}>{rub(t.other)}</td>
+                  <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: '#b9772a', borderTop: '2px solid var(--line)' }}>{rub(t.confectionery)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--ink)', borderTop: '2px solid var(--line)' }}>{rub(t.total)}</td>
                   <td style={{ ...td, textAlign: 'right', fontWeight: 800, color: 'var(--muted)', borderTop: '2px solid var(--line)' }}>{confPct}%</td>
                 </tr>

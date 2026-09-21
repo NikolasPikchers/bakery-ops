@@ -180,7 +180,7 @@ export function ProfitBars({ data, height = 178 }: { data: { date: string; value
   );
 }
 
-/** Стэк-бары по дням: кондитерка (низ) + пироги/прочее (верх), подписи дней + тултип. */
+/** Стэк-бары по дням: пироги/прочее (низ) + кондитерка (верх), подписи дней + тултип. */
 export function StackBars({
   data,
   height = 200,
@@ -198,9 +198,9 @@ export function StackBars({
       <div className={styles.stackBars} style={{ height }}>
         {data.map((d, i) => (
           <div key={i} className={styles.stackCol}>
-            <span className={styles.barTip}>{dayLabel(d.date)} · конд. {rub(d.confectionery)} · пироги+проч. {rub(d.other)} · всего {rub(d.confectionery + d.other)}</span>
-            <span className={styles.sseg} style={{ height: `${(d.confectionery / max) * 100}%`, background: confColor }} />
+            <span className={styles.barTip}>{dayLabel(d.date)} · пироги+проч. {rub(d.other)} · конд. {rub(d.confectionery)} · всего {rub(d.confectionery + d.other)}</span>
             <span className={styles.sseg} style={{ height: `${(d.other / max) * 100}%`, background: otherColor }} />
+            <span className={styles.sseg} style={{ height: `${(d.confectionery / max) * 100}%`, background: confColor }} />
           </div>
         ))}
       </div>
