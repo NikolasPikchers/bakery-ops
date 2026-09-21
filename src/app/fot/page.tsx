@@ -43,10 +43,10 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
         <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>Пекарня</div>
           <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
-            к 15-му: <b style={{ color: 'var(--ink)' }}>{rub(t.bakeryTo15)}</b> · 2-я половина: <b style={{ color: 'var(--ink)' }}>{rub(t.bakeryAfter15)}</b> · за месяц: <b style={{ color: 'var(--profit)' }}>{rub(t.bakeryTotal)}</b>
+            1-я выплата: <b style={{ color: 'var(--ink)' }}>{rub(t.bakeryPay1)}</b> · 2-я выплата: <b style={{ color: 'var(--ink)' }}>{rub(t.bakeryPay2)}</b> · за месяц: <b style={{ color: 'var(--profit)' }}>{rub(t.bakeryTotal)}</b>
           </div>
         </div>
-        <FotGrid rows={v.bakery} monthDays={v.monthDays} semiMonthly />
+        <FotGrid rows={v.bakery} monthDays={v.monthDays} payouts />
       </div>
 
       <div style={card}>
@@ -54,7 +54,7 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
           <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>Кондитерка</div>
           <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>за месяц: <b style={{ color: 'var(--profit)' }}>{rub(t.confectioneryTotal)}</b></div>
         </div>
-        <FotGrid rows={v.confectionery} monthDays={v.monthDays} semiMonthly={false} />
+        <FotGrid rows={v.confectionery} monthDays={v.monthDays} payouts={false} />
       </div>
 
       {v.fixed.length > 0 && (
@@ -77,8 +77,11 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
         </div>
       )}
 
-      <p style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>
-        Итого ФОТ за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.grand)}</b> (включая фикс-выплаты). Клик по ячейке — переключить выход. Премии — от выручки Плюшкино за день.
+      <p style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600, lineHeight: 1.55 }}>
+        Итого к выдаче за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.paymentsGrand)}</b> (включая фикс-выплаты). Клик по ячейке — переключить выход. Премии — от выручки Плюшкино за день.
+        <br />
+        Выплата закрывается последней сменой сотрудника на отсечку (15-е и конец месяца) или раньше — поэтому у бригад A и B даты выплат разные. Премия за последнюю смену
+        периода переносится в следующую выплату (в день выплаты выручка этого дня ещё не известна), а в текущую входит премия за последнюю смену прошлого периода.
       </p>
     </div>
   );

@@ -2,15 +2,16 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { FotRow } from '@/lib/db/fot-repo';
+import type { FotPayment, FotRow } from '@/lib/db/fot-repo';
 import { bonusColor } from '@/lib/fot/bonus-colors';
 
 const rub = (n: number) => Math.round(n).toLocaleString('ru-RU');
+const dm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
 
 const roleLabel = (r: FotRow['employee']) =>
   r.role === 'baker' ? `пекарь ${r.brigade ?? ''}`.trim() : r.role === 'cashier' ? `кассир ${r.brigade ?? ''}`.trim() : r.role === 'kitchen' ? 'кухня' : 'кондитер';
 
-export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; monthDays: string[]; semiMonthly: boolean }) {
+export function FotGrid({ rows, monthDays, payouts }: { rows: FotRow[]; monthDays: string[]; payouts: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
@@ -26,6 +27,22 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
   const head: React.CSSProperties = { fontSize: 10.5, color: 'var(--muted)', fontWeight: 700, padding: '0 0 6px' };
   const numTd: React.CSSProperties = { padding: '4px 8px', textAlign: 'right', fontWeight: 800, fontVariantNumeric: 'tabular-nums', borderLeft: '1px solid var(--line)', whiteSpace: 'nowrap' };
   const numTh: React.CSSProperties = { ...head, textAlign: 'right', paddingLeft: 8 };
+  const subLine: React.CSSProperties = { fontSize: 10, color: 'var(--muted)', fontWeight: 600, marginTop: 1 };
+
+  // Ячейка выплаты: сумма к выдаче, под ней — дата выплаты этого сотрудника
+  // (у бригад A и B она разная) и разбивка «база + премии».
+  const payoutCell = (p: FotPayment | undefined) => (
+    <td style={{ ...numTd, color: 'var(--ink)' }}>
+      {p ? (
+        <>
+          <div>{rub(p.amount)}</div>
+          <div style={subLine}>{dm(p.payDate)}{p.bonus > 0 ? ` · ${rub(p.base)} + ${rub(p.bonus)}` : ''}</div>
+        </>
+      ) : (
+        '—'
+      )}
+    </td>
+  );
 
   return (
     <div style={{ overflowX: 'auto' }}>
@@ -37,10 +54,10 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
               <th key={d} style={{ ...head, width: 26 }}>{Number(d.slice(8, 10))}</th>
             ))}
             <th style={numTh}>Смен</th>
-            {semiMonthly ? (
+            {payouts ? (
               <>
-                <th style={numTh}>к 15</th>
-                <th style={numTh}>2-я пол.</th>
+                <th style={numTh}>1-я выплата</th>
+                <th style={numTh}>2-я выплата</th>
                 <th style={numTh}>За месяц</th>
               </>
             ) : (
@@ -76,14 +93,14 @@ export function FotGrid({ rows, monthDays, semiMonthly }: { rows: FotRow[]; mont
                 );
               })}
               <td style={{ ...numTd, color: 'var(--ink)' }}>{r.shifts}</td>
-              {semiMonthly ? (
+              {payouts ? (
                 <>
-                  <td style={{ ...numTd, color: 'var(--ink)' }}>{rub(r.payTo15)}</td>
-                  <td style={{ ...numTd, color: 'var(--ink)' }}>{rub(r.payAfter15)}</td>
-                  <td style={{ ...numTd, color: 'var(--profit)' }}>{rub(r.payTotal)}</td>
+                  {payoutCell(r.payments.find((p) => p.half === 1))}
+                  {payoutCell(r.payments.find((p) => p.half === 2))}
+                  <td style={{ ...numTd, color: 'var(--profit)' }}>{rub(r.paymentsTotal)}</td>
                 </>
               ) : (
-                <td style={{ ...numTd, color: 'var(--profit)' }}>{rub(r.payTotal)}</td>
+                <td style={{ ...numTd, color: 'var(--profit)' }}>{rub(r.paymentsTotal)}</td>
               )}
             </tr>
             );
