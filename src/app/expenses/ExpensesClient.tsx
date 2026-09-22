@@ -4,6 +4,7 @@ import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { EXPENSE_CATEGORIES, categoryLabel } from '@/lib/finance/categories';
 import type { ExpenseListItem } from '@/lib/db/finance-repo';
+import { Card, CardHead, Empty, Table, btnStyle, headRowStyle, inputStyle, numStyle, rowStyle } from '../_ui';
 
 const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
 const SESSION_EXPIRED = 'Сессия истекла — выйдите и войдите заново, затем повторите.';
@@ -31,8 +32,6 @@ type ImportResult = {
   };
   skippedNoDate: number;
 };
-
-const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 22, marginBottom: 18 };
 
 export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseListItem[]; total: number; today: string }) {
   const router = useRouter();
@@ -149,40 +148,36 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
     router.refresh();
   }
 
-  const btn: React.CSSProperties = { padding: '9px 16px', borderRadius: 10, border: 'none', background: 'var(--profit)', color: '#fff', fontWeight: 700, fontSize: 14, cursor: 'pointer' };
-
-  const input: React.CSSProperties = { fontSize: 14, fontWeight: 600, color: 'var(--ink)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 10, padding: '9px 11px' };
-
   return (
     <>
       {/* Добавить расход вручную */}
-      <section style={card}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', marginBottom: 12 }}>Добавить расход вручную</div>
+      <Card>
+        <CardHead title="Добавить расход вручную" />
         <form onSubmit={addExpense} style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
           <input
             inputMode="decimal"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Сумма, ₽"
-            style={{ ...input, width: 140 }}
+            style={{ ...inputStyle, width: 140 }}
           />
-          <select value={addCat} onChange={(e) => setAddCat(e.target.value)} style={input}>
+          <select value={addCat} onChange={(e) => setAddCat(e.target.value)} style={inputStyle}>
             {EXPENSE_CATEGORIES.map((c) => (
               <option key={c.key} value={c.key}>{c.label}</option>
             ))}
           </select>
-          <input type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} style={input} />
-          <button type="submit" style={{ ...btn, opacity: addBusy ? 0.6 : 1 }} disabled={addBusy}>{addBusy ? 'Добавляю…' : 'Добавить'}</button>
+          <input type="date" value={addDate} onChange={(e) => setAddDate(e.target.value)} style={inputStyle} />
+          <button type="submit" style={{ ...btnStyle, opacity: addBusy ? 0.6 : 1 }} disabled={addBusy}>{addBusy ? 'Добавляю…' : 'Добавить'}</button>
           {addMsg && <span style={{ fontSize: 13, color: addMsg === 'Добавлено' ? 'var(--profit)' : 'var(--muted)', fontWeight: 600 }}>{addMsg}</span>}
         </form>
         <p style={{ fontSize: 12, color: 'var(--muted)', fontWeight: 600, margin: '10px 0 0' }}>
           Расход идёт на <b>Плюшкино</b>, дата по умолчанию — сегодня. Аренда и коммуналка считаются фиксом (125 000/мес), поэтому такие записи в дашборде не учитываются.
         </p>
-      </section>
+      </Card>
 
       {/* Загрузка выписки */}
-      <section style={card}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)', marginBottom: 6 }}>Загрузить выписку Т-Банка</div>
+      <Card>
+        <CardHead title="Загрузить выписку Т-Банка" mb={6} />
         <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
           Т-Бизнес → счёт → <b>Выписка</b> → скачать в формате <b>CSV</b> (или .zip с CSV). Загрузи файл сюда — расходы сами
           разнесутся по категориям (по ИНН/назначению), переводы себе исключатся. Все расходы идут на <b>Плюшкино</b>.
@@ -196,7 +191,7 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
             onChange={(e) => setFile(e.target.files?.[0] ?? null)}
             style={{ fontSize: 14 }}
           />
-          <button type="submit" style={{ ...btn, opacity: busy ? 0.6 : 1 }} disabled={busy}>{busy ? 'Импорт…' : 'Импортировать'}</button>
+          <button type="submit" style={{ ...btnStyle, opacity: busy ? 0.6 : 1 }} disabled={busy}>{busy ? 'Импорт…' : 'Импортировать'}</button>
           {msg && <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{msg}</span>}
         </form>
 
@@ -223,74 +218,70 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
             </div>
           </div>
         )}
-      </section>
+      </Card>
 
       {/* Список расходов за месяц */}
-      <section style={card}>
-        <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12, gap: 12, flexWrap: 'wrap' }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>Расходы за месяц</div>
-          <div style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>
-            записей: <b style={{ color: 'var(--ink)' }}>{expenses.length}</b> · итого: <b style={{ color: 'var(--expense)' }}>{rub(total)}</b>
-          </div>
-        </div>
+      <Card>
+        <CardHead
+          title="Расходы за месяц"
+          meta={<>записей: <b style={{ color: 'var(--ink)' }}>{expenses.length}</b> · итого: <b style={{ color: 'var(--expense)' }}>{rub(total)}</b></>}
+        />
 
         {expenses.length === 0 ? (
-          <p style={{ fontSize: 13.5, color: 'var(--muted)', fontWeight: 600 }}>За этот месяц расходов нет. Загрузи выписку выше.</p>
+          <Empty>За этот месяц расходов нет. Загрузи выписку выше.</Empty>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ borderCollapse: 'collapse', width: '100%', fontSize: 13.5 }}>
-              <thead>
-                <tr style={{ textAlign: 'left', color: 'var(--muted)', fontSize: 11, fontWeight: 700 }}>
-                  <th style={{ padding: '0 8px 8px 0' }}>Дата</th>
-                  <th style={{ padding: '0 8px 8px' }}>Контрагент / назначение</th>
-                  <th style={{ padding: '0 8px 8px' }}>Категория</th>
-                  <th style={{ padding: '0 0 8px 8px', textAlign: 'right' }}>Сумма</th>
-                  <th style={{ padding: '0 0 8px 8px' }}>Источник</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {expenses.map((e) => (
-                  <tr key={e.id} style={{ borderTop: '1px solid var(--line)', opacity: rowBusy === e.id ? 0.5 : 1 }}>
-                    <td style={{ padding: '8px 8px 8px 0', whiteSpace: 'nowrap', color: 'var(--ink)', fontWeight: 600 }}>{e.date.slice(8, 10)}.{e.date.slice(5, 7)}</td>
-                    <td style={{ padding: '8px', maxWidth: 360 }}>
-                      <div style={{ color: 'var(--ink)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.counterparty ?? '—'}</div>
-                      {e.note && <div style={{ color: 'var(--muted)', fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.note}</div>}
-                    </td>
-                    <td style={{ padding: '8px' }}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
-                        <span style={{ width: 9, height: 9, borderRadius: 3, background: CAT_COLOR[e.category] ?? '#9aa5a0', flexShrink: 0 }} />
-                        <select
-                          value={e.category}
-                          disabled={rowBusy === e.id}
-                          onChange={(ev) => changeCategory(e.id, ev.target.value)}
-                          style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 6px' }}
-                        >
-                          {EXPENSE_CATEGORIES.map((c) => (
-                            <option key={c.key} value={c.key}>{c.label}</option>
-                          ))}
-                        </select>
-                      </span>
-                    </td>
-                    <td style={{ padding: '8px 0 8px 8px', textAlign: 'right', fontWeight: 800, color: 'var(--ink)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{rub(e.amount)}</td>
-                    <td style={{ padding: '8px 0 8px 8px', color: 'var(--muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{e.source === 'tbusiness' ? 'выписка' : e.source === 'import' ? 'CSV' : 'вручную'}</td>
-                    <td style={{ padding: '8px 0 8px 8px', textAlign: 'right' }}>
-                      <button
-                        onClick={() => remove(e.id)}
+          <Table>
+            <thead>
+              <tr style={headRowStyle}>
+                <th style={{ padding: '0 8px 8px 0' }}>Дата</th>
+                <th style={{ padding: '0 8px 8px' }}>Контрагент / назначение</th>
+                <th style={{ padding: '0 8px 8px' }}>Категория</th>
+                <th style={{ padding: '0 0 8px 8px', textAlign: 'right' }}>Сумма</th>
+                <th style={{ padding: '0 0 8px 8px' }}>Источник</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {expenses.map((e) => (
+                <tr key={e.id} style={{ ...rowStyle, opacity: rowBusy === e.id ? 0.5 : 1 }}>
+                  <td style={{ padding: '8px 8px 8px 0', whiteSpace: 'nowrap', color: 'var(--ink)', fontWeight: 600 }}>{e.date.slice(8, 10)}.{e.date.slice(5, 7)}</td>
+                  <td style={{ padding: '8px', maxWidth: 360 }}>
+                    <div style={{ color: 'var(--ink)', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.counterparty ?? '—'}</div>
+                    {e.note && <div style={{ color: 'var(--muted)', fontSize: 11.5, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{e.note}</div>}
+                  </td>
+                  <td style={{ padding: '8px' }}>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7 }}>
+                      <span style={{ width: 9, height: 9, borderRadius: 3, background: CAT_COLOR[e.category] ?? '#9aa5a0', flexShrink: 0 }} />
+                      <select
+                        value={e.category}
                         disabled={rowBusy === e.id}
-                        title="Удалить"
-                        style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}
+                        onChange={(ev) => changeCategory(e.id, ev.target.value)}
+                        style={{ fontSize: 13, fontWeight: 600, color: 'var(--ink)', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 8, padding: '4px 6px' }}
                       >
-                        ×
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                        {EXPENSE_CATEGORIES.map((c) => (
+                          <option key={c.key} value={c.key}>{c.label}</option>
+                        ))}
+                      </select>
+                    </span>
+                  </td>
+                  <td style={{ padding: '8px 0 8px 8px', ...numStyle, fontWeight: 800, color: 'var(--ink)' }}>{rub(e.amount)}</td>
+                  <td style={{ padding: '8px 0 8px 8px', color: 'var(--muted)', fontSize: 12, whiteSpace: 'nowrap' }}>{e.source === 'tbusiness' ? 'выписка' : e.source === 'import' ? 'CSV' : 'вручную'}</td>
+                  <td style={{ padding: '8px 0 8px 8px', textAlign: 'right' }}>
+                    <button
+                      onClick={() => remove(e.id)}
+                      disabled={rowBusy === e.id}
+                      title="Удалить"
+                      style={{ border: 'none', background: 'transparent', color: 'var(--muted)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: 4 }}
+                    >
+                      ×
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </Table>
         )}
-      </section>
+      </Card>
     </>
   );
 }
