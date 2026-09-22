@@ -9,9 +9,16 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
-const CONF = '#e0a458'; // кондитерка (\)
-const OTHER = '#2563eb'; // пироги + прочее
-const CONF_INK = '#b9772a'; // кондитерка в тексте таблицы — темнее, чтобы читалось
+// Зелёная гамма интерфейса: обе краски выведены из фирменных токенов globals.css.
+// --brand #8fbc9b (мятный) и --profit #2e7d5b (глубокий зелёный) взять «как есть» нельзя:
+// друг против друга они дают всего 2.34:1, а в стеке сегменты соприкасаются и должны читаться
+// как две отдельные полосы (WCAG 1.4.11 требует 3:1 для смежных графических объектов).
+const CONF = '#8fbc9b'; // кондитерка (\) — --brand без изменений; верх стека
+const OTHER = '#256449'; // пироги + прочее — --profit, затемнённый на 20% (каналы ×0.8); низ стека
+// Пара стека CONF/OTHER = 3.28:1 — выше порога 3:1 и заметно лучше прежней пары оранжевый/синий (2.37:1).
+// На белом: OTHER 7.00:1 — годится и как цвет текста; CONF всего 2.14:1 — только заливка,
+// поэтому для чисел выводим затемнённый мятный (тот же тон H≈136°, светлота 65%→40%).
+const CONF_INK = '#4c805a'; // кондитерка в тексте и KPI — 4.62:1 на белом (порог WCAG 4.5:1)
 
 function Dot({ c }: { c: string }) {
   return <span style={{ width: 10, height: 10, borderRadius: 3, background: c, display: 'inline-block' }} />;
@@ -47,13 +54,14 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
           {/* Итоги за месяц: пироги+прочее идут первыми */}
           <div style={kpiGridStyle}>
             <Kpi label="Пироги + прочее" value={rub(t.other)} color={OTHER} sub={`${100 - confPct}% выручки`} />
-            <Kpi label="Кондитерка" value={rub(t.confectionery)} color={CONF} sub={`${confPct}% выручки`} />
+            {/* В KPI число — это текст на белой карточке, поэтому мятный берём в затемнённом варианте */}
+            <Kpi label="Кондитерка" value={rub(t.confectionery)} color={CONF_INK} sub={`${confPct}% выручки`} />
             <Kpi label="Всего за месяц" value={rub(t.total)} />
           </div>
 
           <div style={kpiGridStyle}>
             <Kpi label="Пироги+прочее / день" value={rub(avg(t.other))} color={OTHER} sub={`в среднем за ${n} дн`} />
-            <Kpi label="Кондитерка / день" value={rub(avg(t.confectionery))} color={CONF} sub={`в среднем за ${n} дн`} />
+            <Kpi label="Кондитерка / день" value={rub(avg(t.confectionery))} color={CONF_INK} sub={`в среднем за ${n} дн`} />
             <Kpi label="Всего / день" value={rub(avg(t.total))} sub={`в среднем за ${n} дн`} />
           </div>
 
@@ -68,7 +76,7 @@ export default async function BreakdownPage({ searchParams }: { searchParams: Pr
                 </span>
               }
             />
-            {/* Пироги+прочее — низ стека (синий), кондитерка — верх (оранжевый) */}
+            {/* Пироги+прочее — низ стека (тёмно-зелёный), кондитерка — верх (мятный) */}
             <StackBars data={v.days} height={200} confColor={CONF} otherColor={OTHER} />
           </Card>
 
