@@ -22,6 +22,9 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
   const pathname = usePathname();
   if (!authed) return <>{children}</>;
 
+  // Вкладки сотрудников — своя оболочка под телефон (src/app/staff), без меню владельца.
+  if (pathname === '/staff' || pathname.startsWith('/staff/')) return <>{children}</>;
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', width: '100%', overflow: 'hidden' }}>
       {/* top bar */}
