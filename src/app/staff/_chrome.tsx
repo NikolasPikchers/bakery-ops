@@ -20,7 +20,7 @@ export function StaffPage({ tab, title, month, showOwnerLink, children }: { tab:
         <header style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', padding: 'calc(env(safe-area-inset-top) + 12px) 0 10px' }}>
           {showOwnerLink && (
             // eslint-disable-next-line @next/next/no-html-link-for-pages
-            <a href="/" style={{ display: 'inline-block', fontSize: 13, fontWeight: 700, color: 'var(--muted)', padding: '4px 0 8px' }}>
+            <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
               ← к учёту
             </a>
           )}
