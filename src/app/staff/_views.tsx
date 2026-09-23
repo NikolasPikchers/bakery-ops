@@ -87,10 +87,10 @@ function Payout({ p }: { p: PayoutLine }) {
   );
 }
 
-function EmployeeCard({ card }: { card: EmployeeCardModel }) {
+function EmployeeCard({ card, showOwnerLink }: { card: EmployeeCardModel; showOwnerLink: boolean }) {
   const grid: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 4 };
   return (
-    <section id={`emp-${card.id}`} style={{ ...cardStyle, padding: 14, marginBottom: 12, scrollMarginTop: 'calc(env(safe-area-inset-top) + 80px)' }}>
+    <section id={`emp-${card.id}`} style={{ ...cardStyle, padding: 14, marginBottom: 12, scrollMarginTop: `calc(env(safe-area-inset-top) + ${showOwnerLink ? 124 : 80}px)` }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, marginBottom: 10 }}>
         <h2 style={{ fontSize: 17, fontWeight: 800, color: 'var(--ink)' }}>{card.name}</h2>
         <span style={{ fontSize: 12.5, fontWeight: 600, color: 'var(--muted)' }}>{card.subtitle}</span>
@@ -146,7 +146,7 @@ export function ShiftsView({ month, cards, showOwnerLink }: { month: string; car
             Премия за смену в день выплаты переходит в следующую выплату — в этот день выручка ещё не известна. Пунктир — смена по графику, «…» — выручку за день ещё не внесли.
           </p>
           {cards.map((c) => (
-            <EmployeeCard key={c.id} card={c} />
+            <EmployeeCard key={c.id} card={c} showOwnerLink={showOwnerLink} />
           ))}
         </>
       )}

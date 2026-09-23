@@ -90,4 +90,5 @@ for (const total of [v.totals.bakeryTotal, v.totals.bakeryPay1, v.totals.bakeryP
   if (shifts.includes(s)) fail(`итог пекарни ${s} попал на вкладку «Смены и ЗП»`);
 }
 writeFileSync(path.join(out, 'shifts.html'), page('Смены и ЗП', shifts));
-console.log(`Готово: ${out}/revenue.html, revenue-owner.html, revenue-empty.html, shifts.html`);
+writeFileSync(path.join(out, 'shifts-owner.html'), page('Смены и ЗП (владелец)', renderToStaticMarkup(<ShiftsView month="2026-09" cards={cards} showOwnerLink />)));
+console.log(`Готово: ${out}/revenue.html, revenue-owner.html, revenue-empty.html, shifts.html, shifts-owner.html`);

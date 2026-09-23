@@ -24,9 +24,9 @@ export function StaffPage({ tab, title, month, showOwnerLink, children }: { tab:
               ← к учёту
             </a>
           )}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-            <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink)' }}>{title}</h1>
-            <nav aria-label="Месяц" style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
+            <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h1>
+            <nav aria-label="Месяц" style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, flexShrink: 0 }}>
               <a href={`${base}?month=${prevMonth(month)}`} aria-label="Предыдущий месяц" style={arrow}>‹</a>
               <span style={{ fontSize: 14, fontWeight: 700, color: 'var(--ink)', minWidth: 104, textAlign: 'center' }}>{monthLabel(month)}</span>
               <a href={`${base}?month=${nextMonth(month)}`} aria-label="Следующий месяц" style={arrow}>›</a>
