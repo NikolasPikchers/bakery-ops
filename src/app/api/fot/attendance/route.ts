@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { setAttendance } from '@/lib/db/fot-repo';
 
@@ -7,8 +7,8 @@ export const runtime = 'nodejs';
 const ISO = /^\d{4}-\d{2}-\d{2}$/;
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
   const body = await req.json().catch(() => ({}));
   const employeeId = String(body.employeeId ?? '');
   const date = String(body.date ?? '');

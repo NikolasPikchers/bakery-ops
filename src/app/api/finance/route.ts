@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { parseFinanceEntry } from '@/lib/finance/finance-input';
 import { upsertRevenue, createExpense, listFinanceEntries } from '@/lib/db/finance-repo';
@@ -6,15 +6,15 @@ import { upsertRevenue, createExpense, listFinanceEntries } from '@/lib/db/finan
 export const runtime = 'nodejs';
 
 export async function GET() {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
   const entries = await listFinanceEntries(getPrisma(), 50);
   return Response.json({ entries });
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const parsed = parseFinanceEntry(await req.json().catch(() => null));
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });

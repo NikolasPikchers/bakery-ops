@@ -1,16 +1,17 @@
 import { NextResponse } from 'next/server';
 import { auth } from '@/auth';
+import { accessDecision, roleOf } from '@/lib/auth/roles';
 
-// Защищаем страницы и API. Исключаем next-auth, телеграм-вебхук, статику и саму /login.
-// Страницы без сессии → редирект на /login; API без сессии → 401 JSON (чтобы fetch
-// на клиенте получил понятный статус, а не HTML-страницу логина и не «молчал»).
+// Правило «кто куда» — accessDecision (src/lib/auth/roles.ts). Для API — JSON с кодом,
+// чтобы fetch на клиенте получил понятный статус, а не HTML-страницу логина.
 export default auth((req) => {
-  if (req.auth) return; // авторизован — пропускаем
-  const { pathname, origin } = req.nextUrl;
-  if (pathname.startsWith('/api/')) {
-    return NextResponse.json({ error: 'Unauthorized', code: 'AUTH' }, { status: 401 });
+  const decision = accessDecision(roleOf(req.auth), req.nextUrl.pathname);
+  if (decision.kind === 'allow') return;
+  if (decision.kind === 'deny') {
+    const body = decision.status === 401 ? { error: 'Unauthorized', code: 'AUTH' } : { error: 'Forbidden', code: 'FORBIDDEN' };
+    return NextResponse.json(body, { status: decision.status });
   }
-  return NextResponse.redirect(new URL('/login', origin));
+  return NextResponse.redirect(new URL(decision.to, req.nextUrl.origin));
 });
 
 export const config = {

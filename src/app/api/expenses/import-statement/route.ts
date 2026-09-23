@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { parseStatementCsv } from '@/lib/tbank/parse-statement';
 import { buildStatementPreview } from '@/lib/tbank/preview';
@@ -24,8 +24,8 @@ function parseWithEncoding(bytes: Uint8Array): BankOperation[] {
 }
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const form = await req.formData();
   const fileEntry = form.get('file');

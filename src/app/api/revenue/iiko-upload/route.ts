@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { parseSalesXlsx } from '@/lib/iiko/parse-sales-xlsx';
 import { salesDaysFromFile } from '@/lib/iiko/sales-days';
@@ -10,8 +10,8 @@ export const maxDuration = 60;
 const POINT = 'point-1'; // Плюшкино
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const form = await req.formData();
   const files = form.getAll('files').filter((f): f is File => f instanceof File);

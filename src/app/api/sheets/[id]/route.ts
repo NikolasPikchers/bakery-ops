@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { parseSheetAction } from '@/lib/http/sheet-actions';
 import { applyMovementEdits, confirmSheet } from '@/lib/db/apply-edits';
@@ -6,8 +6,8 @@ import { applyMovementEdits, confirmSheet } from '@/lib/db/apply-edits';
 export const runtime = 'nodejs';
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const { id: sheetId } = await params;
   const parsed = parseSheetAction(await req.json().catch(() => null));

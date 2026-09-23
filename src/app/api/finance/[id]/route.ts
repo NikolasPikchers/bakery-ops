@@ -1,5 +1,5 @@
 import { Prisma } from '@prisma/client';
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { deleteRevenue, deleteExpense, updateExpenseCategory } from '@/lib/db/finance-repo';
 import { categoryFromInput } from '@/lib/finance/categories';
@@ -7,8 +7,8 @@ import { categoryFromInput } from '@/lib/finance/categories';
 export const runtime = 'nodejs';
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const { id } = await params;
   const type = new URL(req.url).searchParams.get('type');
@@ -32,8 +32,8 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
 /** Смена категории расхода (вкладка «Расходы»). Body: { category }. */
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const { id } = await params;
   const body = (await req.json().catch(() => ({}))) as { category?: string };

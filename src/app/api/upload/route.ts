@@ -1,4 +1,4 @@
-import { auth } from '@/auth';
+import { requireOwner } from '@/lib/auth/require-owner';
 import { getPrisma } from '@/lib/db/client';
 import { loadCatalogForPoint } from '@/lib/db/catalog-repo';
 import { parseUploadFields } from '@/lib/http/upload-input';
@@ -9,8 +9,8 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 export async function POST(req: Request) {
-  const session = await auth();
-  if (!session) return Response.json({ error: 'Unauthorized' }, { status: 401 });
+  const session = await requireOwner();
+  if (session instanceof Response) return session;
 
   const form = await req.formData();
   const fileEntry = form.get('file');
