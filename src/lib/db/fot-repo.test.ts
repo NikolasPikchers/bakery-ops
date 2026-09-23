@@ -119,4 +119,13 @@ describe('buildFot — выплаты дважды в месяц', () => {
     const d15 = v.dailyTotal.find((d) => d.date === '2026-09-15')!;
     expect(d15.amount).toBe(3300); // одна смена Евгении: 2300 + премия 1000, без «пика выплаты»
   });
+
+  it('выплата несёт даты своих премий, вид — даты с внесённой выручкой', () => {
+    const v = buildSept();
+    const evg = v.bakery.find((r) => r.employee.id === 'e')!.payments[0];
+    expect(evg.bonusDates).toEqual(['2026-08-31', '2026-09-03', '2026-09-04', '2026-09-07', '2026-09-08', '2026-09-11', '2026-09-12']);
+    expect(v.revenueDates[0]).toBe('2026-08-29');
+    expect(v.revenueDates).toContain('2026-09-15');
+    expect(v.revenueDates).toEqual([...v.revenueDates].sort());
+  });
 });

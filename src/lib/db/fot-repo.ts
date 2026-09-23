@@ -16,8 +16,8 @@ export type FotEmployee = {
   schedOffset: number;
 };
 export type FotDay = { date: string; present: boolean; pay: number };
-/** Одна из двух выплат месяца: сколько, когда и из чего. */
-export type FotPayment = { half: 1 | 2; payDate: string; shifts: number; base: number; bonus: number; amount: number };
+/** Одна из двух выплат месяца: сколько, когда и из чего. `bonusDates` — чьи премии в неё вошли. */
+export type FotPayment = { half: 1 | 2; payDate: string; shifts: number; base: number; bonus: number; amount: number; bonusDates: string[] };
 export type FotRow = {
   employee: FotEmployee;
   days: FotDay[];
@@ -37,6 +37,8 @@ export type FotView = {
   confectionery: FotRow[];
   fixed: FotFixedRow[];
   dailyTotal: { date: string; amount: number }[];
+  /** Даты с внесённой выручкой Плюшкино (прошлый и текущий месяц) — для «ждёт выручку» и «предварительно». */
+  revenueDates: string[];
   totals: {
     /** Суммы 1-й и 2-й выплат пекарни (даты выплат у бригад разные). */
     bakeryPay1: number;
@@ -88,6 +90,7 @@ export function buildFot(args: {
       base: p.base,
       bonus: p.bonus,
       amount: p.amount,
+      bonusDates: p.bonusDates,
     }));
     const paymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
     return { employee: e, days, shifts, payTotal, payments, paymentsTotal };
@@ -126,7 +129,7 @@ export function buildFot(args: {
     grand: sumBy(rows, (r) => r.payTotal) + fixedTotal,
     paymentsGrand: sumBy(rows, (r) => r.paymentsTotal) + fixedTotal,
   };
-  return { month, monthDays, bakery, confectionery, fixed, dailyTotal, totals };
+  return { month, monthDays, bakery, confectionery, fixed, dailyTotal, revenueDates: [...revenueByDate.keys()].sort(), totals };
 }
 
 const iso = (d: Date) => d.toISOString().slice(0, 10);
