@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Manrope } from 'next/font/google';
 import { auth } from '@/auth';
+import { roleOf } from '@/lib/auth/roles';
 import { AppShell } from './AppShell';
 import './globals.css';
 
@@ -16,7 +17,7 @@ export default async function RootLayout({ children }: Readonly<{ children: Reac
   return (
     <html lang="ru" className={manrope.variable}>
       <body>
-        <AppShell authed={!!session}>{children}</AppShell>
+        <AppShell authed={roleOf(session) === 'owner'}>{children}</AppShell>
       </body>
     </html>
   );

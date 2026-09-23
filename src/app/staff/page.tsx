@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation';
 import { auth } from '@/auth';
 import { getPrisma } from '@/lib/db/client';
 import { loadBreakdown } from '@/lib/db/breakdown-repo';
@@ -10,8 +11,11 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 export default async function StaffRevenuePage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
+  const session = await auth();
+  const role = roleOf(session);
+  if (role === null) redirect('/login');
   const month = staffMonth((await searchParams).month, new Date());
-  const [session, v] = await Promise.all([auth(), loadBreakdown(getPrisma(), month)]);
+  const v = await loadBreakdown(getPrisma(), month);
   // В страницу уходят только дни — итоги месяца (v.totals) сотрудникам не отдаём.
-  return <RevenueView month={month} rows={staffRevenueRows(v.days)} showOwnerLink={roleOf(session) === 'owner'} />;
+  return <RevenueView month={month} rows={staffRevenueRows(v.days)} showOwnerLink={role === 'owner'} />;
 }
