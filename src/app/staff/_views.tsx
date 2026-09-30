@@ -1,5 +1,7 @@
 import type { CalendarCell, EmployeeCardModel, PayoutLine, StaffRevenueRow } from '@/lib/staff/view-model';
+import type { ShiftAverages as ShiftAveragesData } from '@/lib/fot/shift-average';
 import { bonusColor } from '@/lib/fot/bonus-colors';
+import { ShiftAverages } from '../_averages';
 import { CONF_INK, PIES, StaffPage, rub } from './_chrome';
 
 export const cardStyle: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 16 };
@@ -124,13 +126,16 @@ function EmployeeCard({ card, showOwnerLink }: { card: EmployeeCardModel; showOw
   );
 }
 
-export function ShiftsView({ month, cards, showOwnerLink }: { month: string; cards: EmployeeCardModel[]; showOwnerLink: boolean }) {
+export function ShiftsView({ month, cards, averages, showOwnerLink }: { month: string; cards: EmployeeCardModel[]; averages: ShiftAveragesData; showOwnerLink: boolean }) {
   return (
     <StaffPage tab="shifts" title="Смены и ЗП" month={month} showOwnerLink={showOwnerLink}>
       {cards.length === 0 ? (
         <div style={emptyStyle}>Сотрудников пекарни пока нет.</div>
       ) : (
         <>
+          <section style={{ ...cardStyle, padding: 14, marginBottom: 12 }}>
+            <ShiftAverages month={month} data={averages} />
+          </section>
           <nav aria-label="Сотрудники" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
             {cards.map((c) => (
               <a

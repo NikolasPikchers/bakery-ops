@@ -5,6 +5,7 @@ import { loadFot } from '@/lib/db/fot-repo';
 import { roleOf } from '@/lib/auth/roles';
 import { staffMonth, todayMoscow } from '@/lib/staff/dates';
 import { employeeCard } from '@/lib/staff/view-model';
+import { shiftAverages } from '@/lib/fot/shift-average';
 import { ShiftsView } from '../_views';
 
 export const runtime = 'nodejs';
@@ -20,5 +21,6 @@ export default async function StaffShiftsPage({ searchParams }: { searchParams: 
   const ctx = { month, today: todayMoscow(now), revenueDates: new Set(v.revenueDates) };
   // Только карточки пекарни: итоги (v.totals), кондитерка и фикс-выплаты сотрудникам не отдаются.
   const cards = v.bakery.map((row) => employeeCard(row, ctx));
-  return <ShiftsView month={month} cards={cards} showOwnerLink={role === 'owner'} />;
+  const averages = shiftAverages(v.bakery, ctx.revenueDates);
+  return <ShiftsView month={month} cards={cards} averages={averages} showOwnerLink={role === 'owner'} />;
 }

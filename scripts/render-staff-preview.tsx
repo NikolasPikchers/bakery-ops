@@ -4,7 +4,9 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { RevenueView, ShiftsView } from '../src/app/staff/_views';
+import { ShiftAverages } from '../src/app/_averages';
 import { staffRevenueRows, employeeCard } from '../src/lib/staff/view-model';
+import { shiftAverages } from '../src/lib/fot/shift-average';
 import { buildFot, type FotEmployee } from '../src/lib/db/fot-repo';
 import { monthDays } from '../src/lib/finance/month';
 
@@ -84,11 +86,38 @@ const cards = v.bakery.map((row) => employeeCard(row, ctx));
 const first = (id: string) => cards.find((c) => c.id === id)?.payouts[0]?.amount;
 if (first('evg') !== 21500) fail(`эталон Евгении: ждали 21 500, получили ${first('evg')}`);
 if (first('alena') !== 23600) fail(`эталон Алёны: ждали 23 600, получили ${first('alena')}`);
-const shifts = renderToStaticMarkup(<ShiftsView month="2026-09" cards={cards} showOwnerLink={false} />);
+const averages = shiftAverages(v.bakery, new Set(v.revenueDates));
+const shifts = renderToStaticMarkup(<ShiftsView month="2026-09" cards={cards} averages={averages} showOwnerLink={false} />);
 for (const total of [v.totals.bakeryTotal, v.totals.bakeryPay1, v.totals.bakeryPay2]) {
   const s = Math.round(total).toLocaleString('ru-RU');
   if (shifts.includes(s)) fail(`итог пекарни ${s} попал на вкладку «Смены и ЗП»`);
 }
+if (!shifts.includes('Средняя ЗП за смену')) fail('на вкладке «Смены и ЗП» нет блока средней ЗП');
 writeFileSync(path.join(out, 'shifts.html'), page('Смены и ЗП', shifts));
-writeFileSync(path.join(out, 'shifts-owner.html'), page('Смены и ЗП (владелец)', renderToStaticMarkup(<ShiftsView month="2026-09" cards={cards} showOwnerLink />)));
-console.log(`Готово: ${out}/revenue.html, revenue-owner.html, revenue-empty.html, shifts.html, shifts-owner.html`);
+writeFileSync(
+  path.join(out, 'shifts-owner.html'),
+  page('Смены и ЗП (владелец)', renderToStaticMarkup(<ShiftsView month="2026-09" cards={cards} averages={averages} showOwnerLink />)),
+);
+
+// ── Средняя ЗП за смену: сам блок — только пекари и кассиры, без кухни и без бригад.
+const block = renderToStaticMarkup(<ShiftAverages month="2026-09" data={averages} />);
+if (!block.includes('Средняя ЗП за смену')) fail('нет заголовка «Средняя ЗП за смену»');
+for (const name of ['Катя', 'Евгения', 'Алёна', 'Валентина', 'Наташа', 'Кристина']) {
+  if (!block.includes(name)) fail(`в средней ЗП нет «${name}»`);
+}
+if (block.includes('Людмила')) fail('кухня попала в среднюю ЗП');
+if (block.includes('бригада') || block.includes('Бригада')) fail('в средней ЗП упомянуты бригады');
+const empty = renderToStaticMarkup(<ShiftAverages month="2026-10" data={{ bakers: [], cashiers: [] }} />);
+if (!empty.includes('Пока нет смен с внесённой выручкой.') || empty.includes('Пекари')) fail('пустой месяц: ждали одну строку «Пока нет смен…»');
+if (renderToStaticMarkup(<ShiftAverages month="2026-09" data={{ ...averages, cashiers: [] }} />).includes('Кассиры')) fail('пустой список «Кассиры» выведен');
+// Как на /fot: карточка `card` из fot/page.tsx на ширине компьютера.
+const fotCard: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 22, marginBottom: 18 };
+const desktop = renderToStaticMarkup(
+  <div style={{ width: '100%', maxWidth: 1100, margin: '24px auto', padding: '0 28px' }}>
+    <div style={fotCard}>
+      <ShiftAverages month="2026-09" data={averages} />
+    </div>
+  </div>,
+);
+writeFileSync(path.join(out, 'averages-desktop.html'), page('Средняя ЗП за смену (компьютер)', desktop));
+console.log(`Готово: ${out}/revenue.html, revenue-owner.html, revenue-empty.html, shifts.html, shifts-owner.html, averages-desktop.html`);
