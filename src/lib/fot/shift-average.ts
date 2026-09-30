@@ -1,6 +1,6 @@
 import type { FotRow } from '@/lib/db/fot-repo';
 
-export type ShiftAverage = { id: string; name: string; shifts: number; avgPay: number; avgBonus: number; leader: boolean };
+export type ShiftAverage = { id: string; name: string; shifts: number; avgPay: number; avgBonus: number };
 export type ShiftAverages = { bakers: ShiftAverage[]; cashiers: ShiftAverage[] };
 
 /**
@@ -13,7 +13,7 @@ export function shiftAverages(rows: FotRow[], revenueDates: ReadonlySet<string>)
 }
 
 function averagesOf(rows: FotRow[], role: 'baker' | 'cashier', revenueDates: ReadonlySet<string>): ShiftAverage[] {
-  const list = rows
+  return rows
     .filter((r) => r.employee.role === role)
     .flatMap((r) => {
       const counted = r.days.filter((d) => d.present && revenueDates.has(d.date));
@@ -22,10 +22,6 @@ function averagesOf(rows: FotRow[], role: 'baker' | 'cashier', revenueDates: Rea
       return [{ id: r.employee.id, name: r.employee.name, shifts: counted.length, avgPay: Math.round(mean), avgBonus: Math.round(mean - r.employee.basePay) }];
     })
     .sort((a, b) => b.avgPay - a.avgPay || a.name.localeCompare(b.name, 'ru'));
-  // Лидер — у максимума списка; если все равны (или человек один), лидера нет.
-  const max = Math.max(...list.map((x) => x.avgPay));
-  const min = Math.min(...list.map((x) => x.avgPay));
-  return list.map((x) => ({ ...x, leader: max > min && x.avgPay === max }));
 }
 
 /** «смена / смены / смен» для числа n. */

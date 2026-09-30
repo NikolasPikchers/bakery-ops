@@ -29,7 +29,7 @@ describe('shiftAverages', () => {
       { '2026-09-01': 3500, '2026-09-02': 2600, '2026-09-20': 2300, '2026-09-25': 2300 },
       ['2026-09-03'], // выходной, хотя выручка за день есть
     );
-    expect(shiftAverages([r], REV).bakers).toEqual([{ id: 'evg', name: 'Евгения', shifts: 2, avgPay: 3050, avgBonus: 750, leader: false }]);
+    expect(shiftAverages([r], REV).bakers).toEqual([{ id: 'evg', name: 'Евгения', shifts: 2, avgPay: 3050, avgBonus: 750 }]);
   });
 
   it('кухня и кондитер не попадают, пекари и кассиры — в своих списках', () => {
@@ -53,46 +53,15 @@ describe('shiftAverages', () => {
         row(emp('evg', 'Евгения', 'baker', 2300), { '2026-09-01': 3100 }),
         row(emp('valya', 'Валентина', 'baker', 2300), { '2026-09-01': 3300 }),
         row(emp('alena', 'Алёна', 'baker', 2300), { '2026-09-01': 3100 }),
+        row(emp('natasha', 'Наташа', 'cashier', 2100), { '2026-09-01': 3100 }),
+        row(emp('olya', 'Оля', 'cashier', 2100), { '2026-09-01': 2600 }),
+        row(emp('kristina', 'Кристина', 'cashier', 2100), { '2026-09-01': 3100 }),
       ],
       REV,
     );
     expect(a.bakers.map((x) => x.name)).toEqual(['Валентина', 'Алёна', 'Евгения', 'Катя']);
-  });
-
-  it('лидер — у максимума в своём списке, при ничьей на максимуме лидеров несколько', () => {
-    const a = shiftAverages(
-      [
-        row(emp('natasha', 'Наташа', 'cashier', 2100), { '2026-09-01': 3100 }),
-        row(emp('olya', 'Оля', 'cashier', 2100), { '2026-09-01': 2600 }),
-        row(emp('kristina', 'Кристина', 'cashier', 2100), { '2026-09-01': 3100 }),
-        row(emp('katya', 'Катя', 'baker', 2300), { '2026-09-01': 3500 }),
-        row(emp('evg', 'Евгения', 'baker', 2300), { '2026-09-01': 3100 }),
-      ],
-      REV,
-    );
-    // У кассиров максимум 3 100 — ниже, чем у пекарей, но лидеры у них свои.
-    expect(a.cashiers.map((x) => [x.name, x.leader])).toEqual([
-      ['Кристина', true],
-      ['Наташа', true],
-      ['Оля', false],
-    ]);
-    expect(a.bakers.map((x) => [x.name, x.leader])).toEqual([
-      ['Катя', true],
-      ['Евгения', false],
-    ]);
-  });
-
-  it('все равны — лидера нет', () => {
-    const a = shiftAverages(
-      [row(emp('katya', 'Катя', 'baker', 2300), { '2026-09-01': 3100 }), row(emp('evg', 'Евгения', 'baker', 2300), { '2026-09-02': 3100 })],
-      REV,
-    );
-    expect(a.bakers.map((x) => x.leader)).toEqual([false, false]);
-  });
-
-  it('один человек в списке — лидера нет', () => {
-    const a = shiftAverages([row(emp('natasha', 'Наташа', 'cashier', 2100), { '2026-09-01': 3100 })], REV);
-    expect(a.cashiers).toEqual([{ id: 'natasha', name: 'Наташа', shifts: 1, avgPay: 3100, avgBonus: 1000, leader: false }]);
+    // У кассиров ничья на максимуме: в исходных данных Наташа раньше Кристины, в списке — по имени.
+    expect(a.cashiers.map((x) => x.name)).toEqual(['Кристина', 'Наташа', 'Оля']);
   });
 
   it('сотрудник без засчитанных смен в список не попадает', () => {
@@ -104,7 +73,7 @@ describe('shiftAverages', () => {
       ],
       REV,
     );
-    expect(a.bakers).toEqual([{ id: 'katya', name: 'Катя', shifts: 1, avgPay: 3100, avgBonus: 800, leader: false }]);
+    expect(a.bakers).toEqual([{ id: 'katya', name: 'Катя', shifts: 1, avgPay: 3100, avgBonus: 800 }]);
     expect(a.cashiers).toEqual([]);
   });
 

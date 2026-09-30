@@ -107,6 +107,7 @@ for (const name of ['Катя', 'Евгения', 'Алёна', 'Валенти�
 }
 if (block.includes('Людмила')) fail('кухня попала в среднюю ЗП');
 if (block.includes('бригада') || block.includes('Бригада')) fail('в средней ЗП упомянуты бригады');
+if (block.toLowerCase().includes('лидер')) fail('в средней ЗП показан лидер');
 const empty = renderToStaticMarkup(<ShiftAverages month="2026-10" data={{ bakers: [], cashiers: [] }} />);
 if (!empty.includes('Пока нет смен с внесённой выручкой.') || empty.includes('Пекари')) fail('пустой месяц: ждали одну строку «Пока нет смен…»');
 if (renderToStaticMarkup(<ShiftAverages month="2026-09" data={{ ...averages, cashiers: [] }} />).includes('Кассиры')) fail('пустой список «Кассиры» выведен');

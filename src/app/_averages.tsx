@@ -4,28 +4,14 @@ import { monthLabel } from '@/lib/finance/month';
 import { shiftsWord, type ShiftAverage, type ShiftAverages as ShiftAveragesData } from '@/lib/fot/shift-average';
 import { rub } from './staff/_chrome';
 
-const pill: React.CSSProperties = {
-  display: 'inline-block',
-  marginLeft: 6,
-  padding: '2px 8px',
-  borderRadius: 999,
-  fontSize: 11,
-  fontWeight: 800,
-  color: 'var(--profit)',
-  background: 'rgba(46,125,91,0.12)',
-};
-
 function Person({ p }: { p: ShiftAverage }) {
   return (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, padding: '8px 0', borderTop: '1px solid var(--line)' }}>
       <div style={{ minWidth: 0 }}>
-        <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--ink)' }}>
-          {p.name}
-          {p.leader && <span style={pill}>лидер</span>}
-        </div>
+        <div style={{ fontSize: 14.5, fontWeight: 700, color: 'var(--ink)' }}>{p.name}</div>
         <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>{`премия в среднем ${rub(p.avgBonus)} ₽ · ${p.shifts} ${shiftsWord(p.shifts)}`}</div>
       </div>
-      <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: p.leader ? 'var(--profit)' : 'var(--ink)' }}>
+      <span style={{ flexShrink: 0, fontSize: 15, fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: 'var(--ink)' }}>
         {`${rub(p.avgPay)} ₽`}
       </span>
     </div>
