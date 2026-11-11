@@ -14,7 +14,7 @@ const emp = (id: string, name: string, role: FotEmployee['role'], basePay: numbe
 
 /** Строка табеля: смены {дата → оплата за смену}, `off` — дни без выхода. */
 function row(employee: FotEmployee, shifts: Record<string, number>, off: string[] = []): FotRow {
-  const days = [...Object.entries(shifts).map(([date, pay]) => ({ date, present: true, pay })), ...off.map((date) => ({ date, present: false, pay: 0 }))];
+  const days = [...Object.entries(shifts).map(([date, pay]) => ({ date, present: true, pay, base: employee.basePay, bonus: pay - employee.basePay, adjustment: 0, adjustmentNote: null })), ...off.map((date) => ({ date, present: false, pay: 0, base: employee.basePay, bonus: 0, adjustment: 0, adjustmentNote: null }))];
   return { employee, days, shifts: Object.keys(shifts).length, payTotal: 0, payments: [], paymentsTotal: 0 };
 }
 
@@ -22,6 +22,12 @@ function row(employee: FotEmployee, shifts: Record<string, number>, off: string[
 const REV = new Set(['2026-09-01', '2026-09-02', '2026-09-03', '2026-09-04', '2026-09-05']);
 
 describe('shiftAverages', () => {
+  it('доплата за смену входит в среднюю ЗП, но не выдаётся за премию от выручки', () => {
+    const r = row(emp('evg', 'Евгения', 'baker', 2300), { '2026-09-01': 3100 });
+    r.days[0].pay += 200;
+    r.days[0].adjustment = 200;
+    expect(shiftAverages([r], REV).bakers[0]).toMatchObject({ avgPay: 3300, avgBonus: 800 });
+  });
   it('считаются только отработанные дни с внесённой выручкой', () => {
     const r = row(
       emp('evg', 'Евгения', 'baker', 2300),

@@ -129,3 +129,59 @@ describe('buildFot — выплаты дважды в месяц', () => {
     expect(v.revenueDates).toEqual([...v.revenueDates].sort());
   });
 });
+
+describe('buildFot — ручные корректировки', () => {
+  const args = { month: '2026-09', monthDays: monthDaysOf('2026-09'), employees: bakers, revenueByDate: septRevenue, overrides: new Map<string, boolean>() };
+
+  it('доплата +200 за последнюю смену попадает в текущую выплату, премия переносится как раньше', () => {
+    const original = buildFot(args);
+    const v = buildFot({ ...args, dayAdjustments: new Map([['e|2026-09-15', { amount: 200, note: 'Подмена' }]]) });
+    const r = v.bakery.find((r) => r.employee.id === 'e')!;
+    expect(r.days.find((d) => d.date === '2026-09-15')).toMatchObject({ pay: 3500, bonus: 1000, adjustment: 200, adjustmentNote: 'Подмена' });
+    expect(r.payments[0]).toMatchObject({ amount: 21700, bonus: 5400, dayAdjustment: 200, adjustment: 0 });
+    expect(r.payments[1].amount).toBe(original.bakery.find((r) => r.employee.id === 'e')!.payments[1].amount);
+    expect(v.totals.grand).toBe(original.totals.grand + 200);
+    expect(v.dailyTotal.find((d) => d.date === '2026-09-15')!.amount).toBe(3500);
+  });
+
+  it('удержание и поправки обеих выплат считаются один раз и только для своего сотрудника', () => {
+    const original = buildFot(args);
+    const v = buildFot({
+      ...args,
+      dayAdjustments: new Map([['e|2026-09-15', { amount: -100, note: null }]]),
+      paymentAdjustments: new Map([['e|1', { amount: 500, note: 'Доплата' }], ['e|2', { amount: -300, note: 'Удержание' }]]),
+    });
+    const r = v.bakery.find((r) => r.employee.id === 'e')!;
+    expect(r.payments[0]).toMatchObject({ amount: 21900, dayAdjustment: -100, adjustment: 500, adjustmentNote: 'Доплата' });
+    expect(r.paymentsTotal).toBe(original.bakery.find((r) => r.employee.id === 'e')!.paymentsTotal + 100);
+    expect(v.totals.grand).toBe(original.totals.grand + 100);
+    expect(v.dailyTotal.reduce((sum, d) => sum + d.amount, 0)).toBeCloseTo(v.totals.grand, 6);
+    expect(v.bakery.find((r) => r.employee.id === 'a')).toEqual(original.bakery.find((r) => r.employee.id === 'a'));
+  });
+
+  it('можно внести сумму в выходной и в период совсем без смен', () => {
+    const overrides = new Map(args.monthDays.map((date) => [`e|${date}`, false] as const));
+    const v = buildFot({ ...args, overrides, dayAdjustments: new Map([['e|2026-09-30', { amount: 200, note: null }]]), paymentAdjustments: new Map([['e|1', { amount: 300, note: null }]]) });
+    const r = v.bakery.find((r) => r.employee.id === 'e')!;
+    expect(r.shifts).toBe(0);
+    expect(r.payTotal).toBe(500);
+    expect(r.days[29]).toMatchObject({ present: false, pay: 200 });
+    expect(r.payments.map((p) => [p.half, p.payDate, p.amount])).toEqual([[1, '2026-09-15', 300], [2, '2026-09-30', 200]]);
+  });
+
+  it('снятие смены сохраняет доплату, а доплата прошлого месяца не переносится повторно', () => {
+    const v = buildFot({ ...args, overrides: new Map([['e|2026-09-15', false]]), dayAdjustments: new Map([['e|2026-09-15', { amount: 200, note: null }], ['e|2026-08-31', { amount: 900, note: null }]]) });
+    const r = v.bakery.find((r) => r.employee.id === 'e')!;
+    expect(r.days[14]).toMatchObject({ present: false, pay: 200, adjustment: 200 });
+    expect(r.payments[0]).toMatchObject({ payDate: '2026-09-12', dayAdjustment: 200, amount: 19100 });
+  });
+
+  it('на дашборде по сегодня нет будущих корректировок', () => {
+    const trimmed = { ...args, monthDays: args.monthDays.slice(0, 15) };
+    const original = buildFot(trimmed);
+    const v = buildFot({ ...trimmed, dayAdjustments: new Map([['e|2026-09-30', { amount: 200, note: null }]]), paymentAdjustments: new Map([['e|1', { amount: 300, note: null }], ['e|2', { amount: 400, note: null }]]) });
+    expect(v.totals.grand).toBe(original.totals.grand + 300);
+    expect(v.dailyTotal.reduce((sum, d) => sum + d.amount, 0)).toBeCloseTo(v.totals.grand, 6);
+    expect(v.totals.paymentsGrand).toBe(original.totals.paymentsGrand + 900);
+  });
+});

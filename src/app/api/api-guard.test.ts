@@ -4,6 +4,7 @@ import * as financeId from '@/app/api/finance/[id]/route';
 import * as financeImport from '@/app/api/finance/import/route';
 import * as finance from '@/app/api/finance/route';
 import * as attendance from '@/app/api/fot/attendance/route';
+import * as adjustments from '@/app/api/fot/adjustments/route';
 import * as iikoUpload from '@/app/api/revenue/iiko-upload/route';
 import * as revenueManual from '@/app/api/revenue/manual/route';
 import * as sheet from '@/app/api/sheets/[id]/route';
@@ -22,6 +23,7 @@ const cases: [string, () => Promise<Response>][] = [
   ['GET /api/finance', () => finance.GET()],
   ['POST /api/finance', () => finance.POST(req())],
   ['POST /api/fot/attendance', () => attendance.POST(req())],
+  ['POST /api/fot/adjustments', () => adjustments.POST(req())],
   ['POST /api/revenue/iiko-upload', () => iikoUpload.POST(req())],
   ['POST /api/revenue/manual', () => revenueManual.POST(req())],
   ['PATCH /api/sheets/[id]', () => sheet.PATCH(req(), params)],

@@ -4,13 +4,14 @@ import { loadFot } from '@/lib/db/fot-repo';
 import { currentMonth, monthLabel, prevMonth, nextMonth } from '@/lib/finance/month';
 import { BONUS_LEVELS } from '@/lib/fot/bonus-colors';
 import { shiftAverages } from '@/lib/fot/shift-average';
+import { formatRub } from '@/lib/fot/adjustments';
 import { ShiftAverages } from '../_averages';
 import { FotGrid } from './FotGrid';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
+const rub = (n: number) => '₽ ' + formatRub(n);
 const card: React.CSSProperties = { background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 'var(--radius)', boxShadow: 'var(--shadow)', padding: 22, marginBottom: 18 };
 
 export default async function FotPage({ searchParams }: { searchParams: Promise<{ month?: string }> }) {
@@ -35,6 +36,11 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
       <div style={card}>
         <ShiftAverages month={month} data={averages} />
       </div>
+
+      <p style={{ fontSize: 13, color: 'var(--muted)', lineHeight: 1.6, marginBottom: 16 }}>
+        Нажмите на день, чтобы изменить выход на смену или добавить доплату / удержание. Нажмите на сумму 1-й или 2-й выплаты, чтобы скорректировать её.
+        <br />Например, +200 ₽ за день прибавятся к окладу и премии. Все поправки учитываются в итогах ФОТ.
+      </p>
 
       <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16, fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>
         <span>Премия за день (фон ✓ у пекарей/кассира):</span>
@@ -85,10 +91,11 @@ export default async function FotPage({ searchParams }: { searchParams: Promise<
       )}
 
       <p style={{ fontSize: 12.5, color: 'var(--muted)', fontWeight: 600, lineHeight: 1.55 }}>
-        Итого к выдаче за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.paymentsGrand)}</b> (включая фикс-выплаты). Клик по ячейке — переключить выход. Премии — от выручки Плюшкино за день.
+        Итого к выдаче за месяц: <b style={{ color: 'var(--ink)' }}>{rub(t.paymentsGrand)}</b> (включая фикс-выплаты и корректировки). Премии — от выручки Плюшкино за день.
         <br />
         Выплата закрывается последней сменой сотрудника на отсечку (15-е и конец месяца) или раньше — поэтому у бригад A и B даты выплат разные. Премия за последнюю смену
         периода переносится в следующую выплату (в день выплаты выручка этого дня ещё не известна), а в текущую входит премия за последнюю смену прошлого периода.
+        {' '}Доплаты и удержания за день входят в свою половину месяца без переноса. Для удаления корректировки укажите 0.
       </p>
     </div>
   );

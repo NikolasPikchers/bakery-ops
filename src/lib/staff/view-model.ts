@@ -25,8 +25,8 @@ export function isPreliminary(p: { payDate: string; bonusDates: string[] }, a: {
   return p.payDate > a.today || (a.bonusScheme && p.bonusDates.some((d) => !a.revenueDates.has(d)));
 }
 
-export type CalendarCell = { date: string; day: number; state: DayState } | null;
-export type PayoutLine = { half: 1 | 2; title: string; amount: number; base: number; bonus: number; showBonus: boolean; preliminary: boolean };
+export type CalendarCell = { date: string; day: number; state: DayState; adjustment: number; adjustmentNote: string | null } | null;
+export type PayoutLine = { half: 1 | 2; title: string; amount: number; base: number; bonus: number; dayAdjustment: number; adjustment: number; adjustmentNote: string | null; showBonus: boolean; preliminary: boolean };
 export type EmployeeCardModel = { id: string; name: string; subtitle: string; cells: CalendarCell[]; payouts: PayoutLine[]; monthTotal: number };
 
 const ROLE_LABEL: Record<Role, string> = { baker: 'пекарь', cashier: 'кассир', kitchen: 'кухня', confectioner: 'кондитер' };
@@ -41,13 +41,13 @@ export function employeeCard(row: FotRow, ctx: { month: string; today: string; r
     const state = dayState({
       date,
       present: d?.present ?? false,
-      pay: d?.pay ?? 0,
+      pay: (d?.pay ?? 0) - (d?.adjustment ?? 0),
       basePay: e.basePay,
       bonusScheme,
       revenueEntered: ctx.revenueDates.has(date),
       today: ctx.today,
     });
-    return { date, day: Number(date.slice(8, 10)), state };
+    return { date, day: Number(date.slice(8, 10)), state, adjustment: d?.adjustment ?? 0, adjustmentNote: d?.adjustmentNote ?? null };
   });
   const payouts: PayoutLine[] = row.payments.map((p) => ({
     half: p.half,
@@ -55,6 +55,9 @@ export function employeeCard(row: FotRow, ctx: { month: string; today: string; r
     amount: p.amount,
     base: p.base,
     bonus: p.bonus,
+    dayAdjustment: p.dayAdjustment,
+    adjustment: p.adjustment,
+    adjustmentNote: p.adjustmentNote,
     showBonus: bonusScheme,
     preliminary: isPreliminary(p, { today: ctx.today, bonusScheme, revenueDates: ctx.revenueDates }),
   }));

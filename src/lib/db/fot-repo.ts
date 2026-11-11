@@ -5,6 +5,7 @@ import { autoPresent, type SchedEmployee } from '@/lib/fot/schedule';
 import { dailyPay } from '@/lib/fot/payroll';
 import { actualShifts, payPeriods, payPeriodAmounts } from '@/lib/fot/pay-periods';
 import { FIXED_SALARIES, type FixedSalary } from '@/lib/fot/fixed';
+import type { PayrollAdjustmentInput } from '@/lib/fot/adjustment-input';
 
 export type FotEmployee = {
   id: string;
@@ -15,14 +16,15 @@ export type FotEmployee = {
   basePay: number;
   schedOffset: number;
 };
-export type FotDay = { date: string; present: boolean; pay: number };
+export type FotAdjustment = { amount: number; note: string | null };
+export type FotDay = { date: string; present: boolean; base: number; bonus: number; adjustment: number; adjustmentNote: string | null; pay: number };
 /** Одна из двух выплат месяца: сколько, когда и из чего. `bonusDates` — чьи премии в неё вошли. */
-export type FotPayment = { half: 1 | 2; payDate: string; shifts: number; base: number; bonus: number; amount: number; bonusDates: string[] };
+export type FotPayment = { half: 1 | 2; payDate: string; shifts: number; base: number; bonus: number; dayAdjustment: number; adjustment: number; adjustmentNote: string | null; amount: number; bonusDates: string[] };
 export type FotRow = {
   employee: FotEmployee;
   days: FotDay[];
   shifts: number;
-  /** Начисление за смены месяца (база+премия того же дня) — для дневного графика и дашборда. */
+  /** Начисление за дни месяца + ручные поправки выплат на их даты — для дашборда. */
   payTotal: number;
   /** Две выплаты месяца (см. `@/lib/fot/pay-periods`). */
   payments: FotPayment[];
@@ -60,13 +62,16 @@ export function buildFot(args: {
   employees: FotEmployee[];
   revenueByDate: Map<string, { total: number; pies: number }>;
   overrides: Map<string, boolean>;
+  dayAdjustments?: ReadonlyMap<string, FotAdjustment>;
+  paymentAdjustments?: ReadonlyMap<string, FotAdjustment>;
   fixedSalaries?: FixedSalary[];
 }): FotView {
-  const { month, monthDays, employees, revenueByDate, overrides, fixedSalaries = [] } = args;
+  const { month, monthDays, employees, revenueByDate, overrides, dayAdjustments = new Map(), paymentAdjustments = new Map(), fixedSalaries = [] } = args;
+  const fullMonthDays = monthDaysOf(month);
   // Периоды выплат считаются за полный месяц (даже если `monthDays` обрезаны «по сегодня»)
   // и захватывают хвост прошлого месяца: в первую выплату входит премия за последнюю
   // смену прошлого месяца, а её дата и выручка лежат до 1-го числа.
-  const periodDays = [...monthDaysOf(prevMonth(month)), ...monthDaysOf(month)];
+  const periodDays = [...monthDaysOf(prevMonth(month)), ...fullMonthDays];
   const rows: FotRow[] = employees.map((e) => {
     const sched: SchedEmployee = { role: e.role, group: e.group, brigade: e.brigade, schedOffset: e.schedOffset };
     const payEmp = { role: e.role, basePay: e.basePay };
@@ -75,23 +80,44 @@ export function buildFot(args: {
     const days: FotDay[] = monthDays.map((date) => {
       const ov = overrides.get(`${e.id}|${date}`);
       const present = ov ?? autoPresent(sched, date);
-      const pay = present ? dailyPay(payEmp, revenueByDate.get(date) ?? { total: 0, pies: 0 }) : 0;
-      if (present) {
-        shifts++;
-        payTotal += pay;
-      }
-      return { date, present, pay };
+      // Сохраняем расчёт ставки и премии и на выходной: редактор может включить смену.
+      const base = e.basePay;
+      const bonus = dailyPay(payEmp, revenueByDate.get(date) ?? { total: 0, pies: 0 }) - base;
+      const adj = dayAdjustments.get(`${e.id}|${date}`);
+      const adjustment = adj?.amount ?? 0;
+      const pay = Math.round(((present ? base + bonus : 0) + adjustment) * 100) / 100;
+      if (present) shifts++;
+      payTotal += pay;
+      return { date, present, base, bonus, adjustment, adjustmentNote: adj?.note ?? null, pay };
     });
     const empShifts = actualShifts(sched, periodDays, (d) => overrides.get(`${e.id}|${d}`));
-    const payments: FotPayment[] = payPeriodAmounts(payEmp, payPeriods(month, empShifts), revenueByDate).map((p) => ({
-      half: p.half,
-      payDate: p.payDate,
-      shifts: p.shiftDates.length,
-      base: p.base,
-      bonus: p.bonus,
-      amount: p.amount,
-      bonusDates: p.bonusDates,
-    }));
+    const calculated = payPeriodAmounts(payEmp, payPeriods(month, empShifts), revenueByDate);
+    const payments: FotPayment[] = ([1, 2] as const).flatMap((half) => {
+      const p = calculated.find((p) => p.half === half);
+      // Доплаты за день входят в свою календарную половину без переноса премий.
+      // Учитываются и выходные дни, даже если в периоде вообще нет смен.
+      const dayAdjustment = Math.round(fullMonthDays
+        .filter((date) => (Number(date.slice(8, 10)) <= 15 ? 1 : 2) === half)
+        .reduce((sum, date) => sum + (dayAdjustments.get(`${e.id}|${date}`)?.amount ?? 0), 0) * 100) / 100;
+      const adj = paymentAdjustments.get(`${e.id}|${half}`);
+      const adjustment = adj?.amount ?? 0;
+      if (!p && dayAdjustment === 0 && adjustment === 0) return [];
+      const payDate = p?.payDate ?? (half === 1 ? `${month}-15` : fullMonthDays[fullMonthDays.length - 1]);
+      // Прямая поправка выплаты — расход в дату выплаты, только на учитываемом диапазоне.
+      if (monthDays.includes(payDate)) payTotal += adjustment;
+      return [{
+        half,
+        payDate,
+        shifts: p?.shiftDates.length ?? 0,
+        base: p?.base ?? 0,
+        bonus: p?.bonus ?? 0,
+        dayAdjustment,
+        adjustment,
+        adjustmentNote: adj?.note ?? null,
+        amount: Math.round(((p?.amount ?? 0) + dayAdjustment + adjustment) * 100) / 100,
+        bonusDates: p?.bonusDates ?? [],
+      }];
+    });
     const paymentsTotal = payments.reduce((s, p) => s + p.amount, 0);
     return { employee: e, days, shifts, payTotal, payments, paymentsTotal };
   });
@@ -117,7 +143,7 @@ export function buildFot(args: {
   // ФОТ за день = ЗП сотрудников за день + равномерная доля фикс-окладов (для графиков).
   // Сумма по дням == totals.grand (на учитываемом диапазоне дней).
   const fixedPerDay = fullDays > 0 ? fixedSalaries.reduce((s, f) => s + f.monthly, 0) / fullDays : 0;
-  const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay, 0) + fixedPerDay }));
+  const dailyTotal = monthDays.map((date, i) => ({ date, amount: rows.reduce((s, r) => s + r.days[i].pay + r.payments.filter((p) => p.payDate === date).reduce((sum, p) => sum + p.adjustment, 0), 0) + fixedPerDay }));
   const sumBy = (rs: FotRow[], k: (r: FotRow) => number) => rs.reduce((s, r) => s + k(r), 0);
   const halfSum = (rs: FotRow[], half: 1 | 2) => sumBy(rs, (r) => r.payments.find((p) => p.half === half)?.amount ?? 0);
   const totals = {
@@ -140,10 +166,12 @@ async function fetchInputs(prisma: PrismaClient, month: string) {
   // за последнюю смену прошлого месяца, а ручная правка там же двигает границу периода.
   const startD = new Date(`${monthRange(prevMonth(month)).start}T00:00:00.000Z`);
   const endD = new Date(`${end}T00:00:00.000Z`);
-  const [emps, revs, atts] = await Promise.all([
+  const [emps, revs, atts, dayAdjs, paymentAdjs] = await Promise.all([
     prisma.employee.findMany({ where: { active: true }, orderBy: [{ group: 'asc' }, { name: 'asc' }] }),
     prisma.revenue.findMany({ where: { pointId: 'point-1', date: { gte: startD, lt: endD } }, select: { date: true, amount: true, confectionery: true } }),
     prisma.attendance.findMany({ where: { date: { gte: startD, lt: endD } }, select: { employeeId: true, date: true, present: true } }),
+    prisma.payrollDayAdjustment.findMany({ where: { date: { gte: toDbDate(`${month}-01`), lt: endD } } }),
+    prisma.payrollPaymentAdjustment.findMany({ where: { month } }),
   ]);
   const employees: FotEmployee[] = emps.map((e) => ({
     id: e.id,
@@ -161,14 +189,16 @@ async function fetchInputs(prisma: PrismaClient, month: string) {
   }
   const overrides = new Map<string, boolean>();
   for (const a of atts) overrides.set(`${a.employeeId}|${iso(a.date)}`, a.present);
-  return { employees, revenueByDate, overrides };
+  const dayAdjustments = new Map<string, FotAdjustment>(dayAdjs.map((a) => [`${a.employeeId}|${iso(a.date)}`, { amount: Number(a.amount), note: a.note }]));
+  const paymentAdjustments = new Map<string, FotAdjustment>(paymentAdjs.map((a) => [`${a.employeeId}|${a.half}`, { amount: Number(a.amount), note: a.note }]));
+  return { employees, revenueByDate, overrides, dayAdjustments, paymentAdjustments };
 }
 
 /** Табель за месяц. `upTo` (ISO) ограничивает дни по дату включительно (для дашборда — «по сегодня»). */
 export async function loadFot(prisma: PrismaClient, month: string, upTo?: string): Promise<FotView> {
-  const { employees, revenueByDate, overrides } = await fetchInputs(prisma, month);
+  const inputs = await fetchInputs(prisma, month);
   const days = upTo ? monthDaysOf(month).filter((d) => d <= upTo) : monthDaysOf(month);
-  return buildFot({ month, monthDays: days, employees, revenueByDate, overrides, fixedSalaries: FIXED_SALARIES });
+  return buildFot({ month, monthDays: days, ...inputs, fixedSalaries: FIXED_SALARIES });
 }
 
 /** Сумма ФОТ за месяц (для дашборда). `upTo` — считать только дни ≤ этой даты. */
@@ -184,4 +214,36 @@ export async function setAttendance(prisma: PrismaClient, employeeId: string, da
     create: { employeeId, date: d, present },
     update: { present },
   });
+}
+
+/** Сохранение — установка значения, а не инкремент: повтор запроса не удваивает сумму. */
+export async function setPayrollAdjustment(prisma: PrismaClient, input: PayrollAdjustmentInput) {
+  const { employeeId, amount } = input;
+  const note = input.note || null;
+  if (input.kind === 'payment') {
+    const { month, half } = input;
+    if (amount === 0) return prisma.payrollPaymentAdjustment.deleteMany({ where: { employeeId, month, half } });
+    return prisma.payrollPaymentAdjustment.upsert({
+      where: { employeeId_month_half: { employeeId, month, half } },
+      create: { employeeId, month, half, amount, note },
+      update: { amount, note },
+    });
+  }
+  const date = toDbDate(input.date);
+  const adjustment = amount === 0
+    ? prisma.payrollDayAdjustment.deleteMany({ where: { employeeId, date } })
+    : prisma.payrollDayAdjustment.upsert({
+      where: { employeeId_date: { employeeId, date } },
+      create: { employeeId, date, amount, note },
+      update: { amount, note },
+    });
+  // Если одновременно меняли выход, обе правки сохраняются атомарно.
+  return prisma.$transaction([
+    adjustment,
+    ...(input.present === undefined ? [] : [prisma.attendance.upsert({
+      where: { employeeId_date: { employeeId, date } },
+      create: { employeeId, date, present: input.present },
+      update: { present: input.present },
+    })]),
+  ]);
 }

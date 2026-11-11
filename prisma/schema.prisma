@@ -200,6 +200,8 @@ model Employee {
   active      Boolean       @default(true)
   createdAt   DateTime      @default(now())
   attendance  Attendance[]
+  dayAdjustments PayrollDayAdjustment[]
+  paymentAdjustments PayrollPaymentAdjustment[]
 
   @@unique([name, group])
 }
@@ -215,4 +217,33 @@ model Attendance {
 
   @@unique([employeeId, date])
   @@index([date])
+}
+
+model PayrollDayAdjustment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  date       DateTime @db.Date
+  amount     Decimal  @db.Decimal(10, 2)
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, date])
+  @@index([date])
+}
+
+model PayrollPaymentAdjustment {
+  id         String   @id @default(cuid())
+  employeeId String
+  employee   Employee @relation(fields: [employeeId], references: [id])
+  month      String   @db.VarChar(7)
+  half       Int
+  amount     Decimal  @db.Decimal(10, 2)
+  note       String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([employeeId, month, half])
+  @@index([month])
 }

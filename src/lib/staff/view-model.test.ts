@@ -10,7 +10,7 @@ const LYUDA: FotEmployee = { id: 'l', name: 'Людмила', group: 'bakery', r
 function days(month: string, worked: Record<number, number>): FotRow['days'] {
   return monthDays(month).map((date) => {
     const pay = worked[Number(date.slice(8, 10))];
-    return { date, present: pay !== undefined, pay: pay ?? 0 };
+    return { date, present: pay !== undefined, pay: pay ?? 0, base: 2300, bonus: (pay ?? 2300) - 2300, adjustment: 0, adjustmentNote: null };
   });
 }
 function row(employee: FotEmployee, d: FotRow['days'], payments: FotPayment[] = []): FotRow {
@@ -22,6 +22,9 @@ const pay = (half: 1 | 2, payDate: string, base: number, bonus: number, bonusDat
   shifts: 0,
   base,
   bonus,
+  dayAdjustment: 0,
+  adjustment: 0,
+  adjustmentNote: null,
   amount: base + bonus,
   bonusDates,
 });
@@ -63,17 +66,25 @@ describe('isPreliminary', () => {
 });
 
 describe('employeeCard', () => {
+  it('показывает ручные поправки отдельно от премии в календаре и выплате', () => {
+    const d = days('2026-09', { 3: 3100 });
+    d[2] = { ...d[2], pay: 3300, adjustment: 200, adjustmentNote: 'Подмена' };
+    const p = { ...pay(1, '2026-09-15', 2300, 800, ['2026-09-03']), dayAdjustment: 200, adjustment: -100, adjustmentNote: 'Аванс', amount: 3200 };
+    const c = employeeCard(row(EVG, d, [p]), { month: '2026-09', today: '2026-09-20', revenueDates: new Set(['2026-09-03']) });
+    expect(c.cells[3]).toMatchObject({ state: { kind: 'bonus', amount: 800 }, adjustment: 200, adjustmentNote: 'Подмена' });
+    expect(c.payouts[0]).toMatchObject({ amount: 3200, bonus: 800, dayAdjustment: 200, adjustment: -100, adjustmentNote: 'Аванс' });
+  });
   it('Евгения, сентябрь: подпись, календарь с понедельника, выплата', () => {
     const r = row(EVG, days('2026-09', { 3: 3100, 4: 3100, 20: 2300, 21: 2300 }), [pay(1, '2026-09-15', 16100, 5400, ['2026-08-31', '2026-09-03', '2026-09-04'])]);
     const c = employeeCard(r, { month: '2026-09', today: '2026-09-20', revenueDates: new Set(['2026-08-31', '2026-09-03', '2026-09-04']) });
     expect(c).toMatchObject({ id: 'e', name: 'Евгения', subtitle: 'пекарь · бригада A', monthTotal: 21500 });
     expect(c.cells[0]).toBeNull(); // 1 сентября 2026 — вторник
-    expect(c.cells[1]).toEqual({ date: '2026-09-01', day: 1, state: { kind: 'off' } });
+    expect(c.cells[1]).toEqual({ date: '2026-09-01', day: 1, state: { kind: 'off' }, adjustment: 0, adjustmentNote: null });
     expect(c.cells[3]?.state).toEqual({ kind: 'bonus', amount: 800 });
     expect(c.cells[20]?.state).toEqual({ kind: 'pending' }); // сегодня, выручки ещё нет
     expect(c.cells[21]?.state).toEqual({ kind: 'planned' });
     expect(c.payouts).toEqual([
-      { half: 1, title: '1-я выплата · 15 сен', amount: 21500, base: 16100, bonus: 5400, showBonus: true, preliminary: false },
+      { half: 1, title: '1-я выплата · 15 сен', amount: 21500, base: 16100, bonus: 5400, dayAdjustment: 0, adjustment: 0, adjustmentNote: null, showBonus: true, preliminary: false },
     ]);
   });
 

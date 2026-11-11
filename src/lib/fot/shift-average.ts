@@ -19,7 +19,8 @@ function averagesOf(rows: FotRow[], role: 'baker' | 'cashier', revenueDates: Rea
       const counted = r.days.filter((d) => d.present && revenueDates.has(d.date));
       if (counted.length === 0) return [];
       const mean = counted.reduce((s, d) => s + d.pay, 0) / counted.length;
-      return [{ id: r.employee.id, name: r.employee.name, shifts: counted.length, avgPay: Math.round(mean), avgBonus: Math.round(mean - r.employee.basePay) }];
+      const meanBonus = counted.reduce((s, d) => s + d.bonus, 0) / counted.length;
+      return [{ id: r.employee.id, name: r.employee.name, shifts: counted.length, avgPay: Math.round(mean), avgBonus: Math.round(meanBonus) }];
     })
     .sort((a, b) => b.avgPay - a.avgPay || a.name.localeCompare(b.name, 'ru'));
 }

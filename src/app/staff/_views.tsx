@@ -1,6 +1,7 @@
 import type { CalendarCell, EmployeeCardModel, PayoutLine, StaffRevenueRow } from '@/lib/staff/view-model';
 import type { ShiftAverages as ShiftAveragesData } from '@/lib/fot/shift-average';
 import { bonusColor } from '@/lib/fot/bonus-colors';
+import { formatRub, signedRub } from '@/lib/fot/adjustments';
 import { ShiftAverages } from '../_averages';
 import { CONF_INK, PIES, StaffPage, rub } from './_chrome';
 
@@ -51,7 +52,7 @@ const WEEK = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 const LIGHT_TEXT_BONUS = new Set([500, 800, 1200]);
 const cellBox: React.CSSProperties = { minHeight: 44, borderRadius: 8, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', lineHeight: 1.15 };
 
-function DayCell({ cell }: { cell: CalendarCell }) {
+function DayMark({ cell }: { cell: CalendarCell }) {
   if (cell === null) return <div />;
   const day = <span style={{ fontSize: 13, fontWeight: 700 }}>{cell.day}</span>;
   const note = (text: string) => <span style={{ fontSize: 11, fontWeight: 700 }}>{text}</span>;
@@ -73,18 +74,31 @@ function DayCell({ cell }: { cell: CalendarCell }) {
   }
 }
 
+function DayCell({ cell }: { cell: CalendarCell }) {
+  if (!cell || cell.adjustment === 0) return <DayMark cell={cell} />;
+  return (
+    <div title={cell.adjustmentNote ?? 'Корректировка за день'}>
+      <DayMark cell={cell} />
+      <div style={{ textAlign: 'center', fontSize: 10, fontWeight: 800, color: 'var(--ink)', marginTop: 3 }}>{signedRub(cell.adjustment)} ₽</div>
+    </div>
+  );
+}
+
 function Payout({ p }: { p: PayoutLine }) {
   return (
     <div style={{ padding: '8px 0', borderTop: '1px solid var(--line)' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, fontSize: 14, fontWeight: 700, color: 'var(--ink)' }}>
         <span>{p.title}</span>
-        <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{rub(p.amount)} ₽</span>
+        <span style={{ fontWeight: 800, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatRub(p.amount)} ₽</span>
       </div>
       <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--muted)', marginTop: 2 }}>
         база {rub(p.base)}
         {p.showBonus ? ` + премии ${rub(p.bonus)}` : ''}
+        {p.dayAdjustment !== 0 ? ` · по дням ${signedRub(p.dayAdjustment)}` : ''}
+        {p.adjustment !== 0 ? ` · поправка ${signedRub(p.adjustment)}` : ''}
         {p.preliminary && <span style={{ color: '#8a5a12' }}> · предварительно</span>}
       </div>
+      {p.adjustmentNote && <div style={{ fontSize: 12, color: 'var(--muted)', marginTop: 3 }}>{p.adjustmentNote}</div>}
     </div>
   );
 }
@@ -117,7 +131,7 @@ function EmployeeCard({ card, showOwnerLink }: { card: EmployeeCardModel; showOw
             ))}
             <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: 8, borderTop: '1px solid var(--line)', fontSize: 14.5, fontWeight: 800, color: 'var(--profit)' }}>
               <span>За месяц</span>
-              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{rub(card.monthTotal)} ₽</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{formatRub(card.monthTotal)} ₽</span>
             </div>
           </>
         )}
