@@ -17,12 +17,13 @@ const ROSTER = [
   { name: 'Лариса', group: 'confectionery', role: 'confectioner', brigade: null, basePay: 2500, schedOffset: 2 },
 ] as const;
 
-for (const e of ROSTER) {
-  await prisma.employee.upsert({
-    where: { name_group: { name: e.name, group: e.group } },
-    create: { name: e.name, group: e.group, role: e.role, brigade: e.brigade, basePay: e.basePay, schedOffset: e.schedOffset },
-    update: { role: e.role, brigade: e.brigade, basePay: e.basePay, schedOffset: e.schedOffset, active: true },
-  });
-}
+// Только первоначальное заполнение: имя редактируется владельцем и больше не ключ сида.
+// Повторный запуск не возвращает старые имена и не создаёт дубли после переименования.
+const created = await prisma.$transaction(async (tx) => {
+  if (await tx.employee.count() > 0) return false;
+  await tx.employee.createMany({ data: ROSTER.map((e) => ({ ...e })) });
+  return true;
+});
+if (!created) console.log('Сотрудники уже заведены — первоначальное заполнение пропущено.');
 console.log('employees:', await prisma.employee.count());
 await prisma.$disconnect();

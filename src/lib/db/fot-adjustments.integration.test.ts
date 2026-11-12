@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { loadFot, setAttendance, setPayrollAdjustment } from './fot-repo';
+import { renameEmployee } from './employee-repo';
 
 // Только явно заданная тестовая БД: обычный npm test не пишет в рабочую базу.
 const url = process.env.FOT_TEST_DATABASE_URL;
@@ -50,5 +51,15 @@ describe.skipIf(!url)('корректировки ФОТ — сохранени�
     expect(await prisma.payrollDayAdjustment.count({ where: { employeeId } })).toBe(0);
     expect(await prisma.payrollPaymentAdjustment.count({ where: { employeeId } })).toBe(0);
     expect((await row()).paymentsTotal).toBe(original.paymentsTotal);
+  });
+
+  it('переименование сохраняет ID, выходы, суммы и комментарии, видно и в другом месяце', async () => {
+    await setPayrollAdjustment(prisma, { ...day, present: true });
+    await setPayrollAdjustment(prisma, payment);
+    const original = await row();
+    const name = `${employeeId} — новое имя`;
+    expect(await renameEmployee(prisma, employeeId, name)).toEqual({ id: employeeId, name });
+    expect(await row()).toEqual({ ...original, employee: { ...original.employee, name } });
+    expect((await row('2026-10')).employee).toMatchObject({ id: employeeId, name });
   });
 });

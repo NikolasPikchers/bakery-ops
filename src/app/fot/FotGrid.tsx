@@ -2,10 +2,11 @@
 
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import type { FotPayment, FotRow } from '@/lib/db/fot-repo';
+import type { FotEmployee, FotPayment, FotRow } from '@/lib/db/fot-repo';
 import { bonusColor } from '@/lib/fot/bonus-colors';
 import { formatRub as rub, signedRub } from '@/lib/fot/adjustments';
 import { FotEditor, type FotEditTarget } from './FotEditor';
+import { EmployeeNameEditor } from './EmployeeNameEditor';
 import styles from './fot.module.css';
 
 const dm = (iso: string) => `${iso.slice(8, 10)}.${iso.slice(5, 7)}`;
@@ -16,12 +17,14 @@ const roleLabel = (r: FotRow['employee']) =>
 export function FotGrid({ rows, monthDays, payouts }: { rows: FotRow[]; monthDays: string[]; payouts: boolean }) {
   const router = useRouter();
   const [editor, setEditor] = useState<FotEditTarget | null>(null);
+  const [nameEditor, setNameEditor] = useState<FotEmployee | null>(null);
   const [notice, setNotice] = useState('');
   const [busy, startRefresh] = useTransition();
   const month = monthDays[0].slice(0, 7);
 
   function saved() {
     setEditor(null);
+    setNameEditor(null);
     setNotice('Изменения сохранены');
     startRefresh(() => router.refresh());
   }
@@ -80,7 +83,10 @@ export function FotGrid({ rows, monthDays, payouts }: { rows: FotRow[]; monthDay
             return (
             <tr key={r.employee.id} style={{ borderTop: newGroup ? '2px solid #cfd6d2' : '1px solid var(--line)' }}>
               <td style={{ padding: '6px 8px 6px 0', position: 'sticky', left: 0, background: 'var(--card)', whiteSpace: 'nowrap' }}>
-                <span style={{ fontWeight: 700, color: 'var(--ink)' }}>{r.employee.name}</span>
+                <button type="button" className={styles.employeeButton} disabled={busy} title={`${r.employee.name} — изменить имя`}
+                  aria-label={`${r.employee.name}: изменить имя`} onClick={() => { setNotice(''); setNameEditor(r.employee); }}>
+                  <span>{r.employee.name}</span><small aria-hidden="true">✎</small>
+                </button>
                 <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 6 }}>{roleLabel(r.employee)}</span>
               </td>
               {r.days.map((d) => {
@@ -120,6 +126,7 @@ export function FotGrid({ rows, monthDays, payouts }: { rows: FotRow[]; monthDay
       </table>
       </div>
       {editor && <FotEditor target={editor} onClose={() => setEditor(null)} onSaved={saved} />}
+      {nameEditor && <EmployeeNameEditor employee={nameEditor} onClose={() => setNameEditor(null)} onSaved={saved} />}
     </div>
   );
 }
