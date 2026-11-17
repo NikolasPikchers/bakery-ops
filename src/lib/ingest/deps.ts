@@ -1,5 +1,5 @@
 import { getPrisma } from '@/lib/db/client';
-import { vercelBlobStore } from '@/lib/storage/blob';
+import { getBlobStore } from '@/lib/storage';
 import { recognizeSheet } from '@/lib/recognition/recognize-sheet';
 import { persistRecognition } from '@/lib/db/persist-recognition';
 import { findSheetByImageHash } from '@/lib/db/movements-repo';
@@ -9,7 +9,7 @@ import type { IngestDeps } from './ingest-sheet';
 export function buildIngestDeps(): IngestDeps {
   const prisma = getPrisma();
   return {
-    blob: vercelBlobStore,
+    blob: getBlobStore(),
     recognize: (args) => recognizeSheet(args),
     findSheetByHash: (hash) => findSheetByImageHash(prisma, hash),
     persist: (records) => persistRecognition(prisma, records),

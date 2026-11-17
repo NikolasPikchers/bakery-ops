@@ -44,6 +44,7 @@ export type AccessDecision = { kind: 'allow' } | { kind: 'redirect'; to: string 
 
 /** Кто куда ходит: таблица из раздела 1 спеки. */
 export function accessDecision(role: Role | null, pathname: string): AccessDecision {
+  if (pathname === '/api/health') return { kind: 'allow' };
   if (pathname === '/api/auth' || pathname.startsWith('/api/auth/')) return { kind: 'allow' };
   const isApi = pathname.startsWith('/api/');
   if (role === null) return isApi ? { kind: 'deny', status: 401 } : { kind: 'redirect', to: '/login' };

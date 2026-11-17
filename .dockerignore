@@ -1,0 +1,14 @@
+.git
+.next
+.vercel
+.env*
+node_modules
+coverage
+.preview
+.superpowers
+*.tsbuildinfo
+*.log
+.DS_Store
+docs
+scripts
+**/*.test.ts

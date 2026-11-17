@@ -11,9 +11,11 @@
     "test:watch": "vitest",
     "import:statement": "tsx scripts/import-statement.mts",
     "import:iiko": "tsx scripts/import-iiko-revenue.mts",
+    "migrate:timeweb": "tsx scripts/migrate-timeweb.mts",
     "postinstall": "prisma generate"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.1170.0",
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "@vercel/blob": "^2.4.0",

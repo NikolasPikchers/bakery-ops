@@ -66,6 +66,11 @@ describe('roleOf', () => {
 
 describe('accessDecision', () => {
   const allow = { kind: 'allow' };
+  it('healthcheck is public but other API routes remain protected', () => {
+    expect(accessDecision(null, '/api/health')).toEqual(allow);
+    expect(accessDecision('staff', '/api/health')).toEqual(allow);
+    expect(accessDecision(null, '/api/health-private')).toEqual({ kind: 'deny', status: 401 });
+  });
   it('без сессии: страницы → /login, API → 401', () => {
     expect(accessDecision(null, '/')).toEqual({ kind: 'redirect', to: '/login' });
     expect(accessDecision(null, '/staff')).toEqual({ kind: 'redirect', to: '/login' });

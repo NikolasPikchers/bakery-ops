@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { databaseOptions } from './connection-options';
 
 const g = globalThis as unknown as { __prisma?: PrismaClient };
 
@@ -10,7 +11,7 @@ const g = globalThis as unknown as { __prisma?: PrismaClient };
  */
 export function getPrisma(): PrismaClient {
   if (!g.__prisma) {
-    const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+    const adapter = new PrismaPg(databaseOptions());
     g.__prisma = new PrismaClient({ adapter });
   }
   return g.__prisma;
