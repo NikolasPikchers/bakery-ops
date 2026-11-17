@@ -32,6 +32,10 @@ URL датасорса в `prisma.config.ts`, не в `schema.prisma`) · дал
 - `src/lib/iiko/sync.ts` — синхронизация выручки Плюшкино (вчера+сегодня по МСК) → `Revenue`; её зовут ночной
   Vercel Cron `/api/cron/iiko-sync` (CRON_SECRET), `/api/revenue/iiko-sync` (дашборд, кнопка) и CLI `npm run import:iiko`.
   Подробности и ключи — `docs/iiko-import.md`.
+- `src/lib/tbank/` — расходы Т-Бизнеса: `client.ts` (T-API, токен привязан к IP Timeweb, сертификат Минцифры —
+  `https-fetch.ts`), `api-operation.ts` (операция API → выписка), `expense-key.ts` (ключ без дублей между файлом и API),
+  `sync.ts` (последние 7 дней → `Expense`; ночью, кнопкой на «Расходах», `/api/cron/tbank-sync`). Файл-выписка —
+  `parse-statement.ts`. Подробности — `docs/tbusiness-import.md`.
 - `prisma/schema.prisma` — Point, Product, Sheet, Movement, UnknownLine (+ enums)
 
 ## Команды

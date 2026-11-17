@@ -231,7 +231,7 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
         />
 
         {expenses.length === 0 ? (
-          <Empty>За этот месяц расходов нет. Загрузи выписку выше.</Empty>
+          <Empty>За этот месяц расходов нет. Обнови из банка или загрузи выписку выше.</Empty>
         ) : (
           <Table>
             <thead>
