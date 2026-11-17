@@ -47,7 +47,7 @@ describe('GET /api/cron/tbank-diagnose', () => {
     const res = await GET(req('?from=2026-10-01&till=2026-10-31', 'Bearer cron-s3cret'));
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(getStatement).toHaveBeenCalledWith(ACC, '2026-10-01', '2026-10-31');
+    expect(getStatement).toHaveBeenCalledWith(ACC, '2026-10-01', '2026-10-31', expect.any(Function));
     expect(body.reports[0]).toMatchObject({ account: '…2271', bestMatch: { matched: 1 } });
     expect(JSON.stringify(body)).not.toContain(ACC);
   });

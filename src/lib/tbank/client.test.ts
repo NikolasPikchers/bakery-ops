@@ -52,6 +52,30 @@ describe('TBusinessClient', () => {
     expect(calls[1].url.searchParams.get('cursor')).toBe('C2');
   });
 
+  it('не зацикливается: банк отдаёт nextCursor и на последней (пустой) странице', async () => {
+    const { fetchImpl, calls } = fakeFetch((url) =>
+      url.searchParams.get('cursor') ? { body: { operations: [], nextCursor: 'C2' } } : { body: { operations: [{ operationId: 'a' }], nextCursor: 'C2' } },
+    );
+    const ops = await new TBusinessClient({ token: 't', fetchImpl }).getStatement('40802810000000000001', '2026-10-01', '2026-10-31');
+    expect(ops.map((o) => o.operationId)).toEqual(['a']);
+    expect(calls).toHaveLength(2);
+  });
+
+  it('не зацикливается: курсор повторился', async () => {
+    const { fetchImpl, calls } = fakeFetch(() => ({ body: { operations: [{ operationId: 'a' }], nextCursor: 'SAME' } }));
+    await new TBusinessClient({ token: 't', fetchImpl }).getStatement('40802810000000000001', '2026-10-01', '2026-10-31');
+    expect(calls).toHaveLength(2);
+  });
+
+  it('сообщает о каждой странице — для логов', async () => {
+    const { fetchImpl } = fakeFetch((url) =>
+      url.searchParams.get('cursor') ? { body: { operations: [{}], nextCursor: null } } : { body: { operations: [{}, {}], nextCursor: 'C2' } },
+    );
+    const pages: number[] = [];
+    await new TBusinessClient({ token: 't', fetchImpl }).getStatement('40802810000000000001', '2026-10-01', '2026-10-31', (n) => pages.push(n));
+    expect(pages).toEqual([2, 1]);
+  });
+
   it('сетевая ошибка — с кодом причины (TLS, таймаут, DNS), а не голое «fetch failed»', async () => {
     const fetchImpl = (async () => {
       throw Object.assign(new Error('fetch failed'), { cause: { code: 'SELF_SIGNED_CERT_IN_CHAIN', message: 'self-signed certificate in certificate chain' } });

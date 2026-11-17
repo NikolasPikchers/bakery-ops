@@ -29,23 +29,35 @@ export async function GET(req: Request) {
     return Response.json({ error: 'Период: from и till в формате ГГГГ-ММ-ДД, till ≥ from' }, { status: 400 });
   }
 
+  const started = Date.now();
+  const steps: string[] = [];
+  const step = (s: string) => {
+    const line = `${Math.round((Date.now() - started) / 100) / 10}s ${s}`;
+    steps.push(line);
+    console.log('tbank diagnose:', line);
+  };
+
   try {
     const client = new TBusinessClient({ token });
     const accounts = await client.getAccounts();
+    step(`счетов: ${accounts.length}`);
     const reports = [];
     for (const a of accounts) {
-      const ops = await client.getStatement(a.accountNumber, from, till);
+      const tag = `…${a.accountNumber.slice(-4)}`;
+      let page = 0;
+      const ops = await client.getStatement(a.accountNumber, from, till, (n) => step(`${tag} страница ${++page}: ${n} операций`));
       const existing = await getPrisma().expense.findMany({
         where: { source: 'tbusiness', date: { gte: toDbDate(from), lte: toDbDate(till) }, externalId: { startsWith: `${a.accountNumber}|` } },
         select: { externalId: true, category: true },
       });
       const rows = existing.flatMap((e) => (e.externalId ? [{ externalId: e.externalId, category: String(e.category) }] : []));
-      reports.push({ account: `…${a.accountNumber.slice(-4)}`, accountType: a.accountType ?? null, ...diagnoseStatement(ops, a.accountNumber, rows) });
+      step(`${tag}: в базе ${rows.length} расходов из файла за период`);
+      reports.push({ account: tag, accountType: a.accountType ?? null, ...diagnoseStatement(ops, a.accountNumber, rows) });
     }
-    return Response.json({ from, till, accounts: accounts.length, reports });
+    return Response.json({ from, till, accounts: accounts.length, steps, reports });
   } catch (e) {
     const error = e instanceof Error ? e.message : String(e);
     console.error('tbank diagnose failed:', error);
-    return Response.json({ error }, { status: 502 });
+    return Response.json({ error, steps }, { status: 502 });
   }
 }

@@ -71,8 +71,12 @@ export class TBusinessClient {
     return this.get<TbankAccount[]>('/api/v4/bank-accounts');
   }
 
-  /** Проведённые операции по счёту за [from; till] (даты по Москве, включительно), все страницы. */
-  async getStatement(accountNumber: string, from: string, till: string): Promise<TbankRawOperation[]> {
+  /**
+   * Проведённые операции по счёту за [from; till] (даты по Москве, включительно), все страницы.
+   * Останавливается и на пустой странице, и на повторе курсора — на случай, если банк отдаёт
+   * nextCursor и после последней страницы.
+   */
+  async getStatement(accountNumber: string, from: string, till: string, onPage?: (operations: number) => void): Promise<TbankRawOperation[]> {
     const all: TbankRawOperation[] = [];
     let cursor: string | null = null;
     for (let page = 0; page < MAX_PAGES; page++) {
@@ -85,9 +89,12 @@ export class TBusinessClient {
       };
       if (cursor) query.cursor = cursor;
       const body = await this.get<{ operations?: TbankRawOperation[]; nextCursor?: string | null }>('/api/v1/statement', query);
-      all.push(...(body.operations ?? []));
-      cursor = body.nextCursor ?? null;
-      if (!cursor) return all;
+      const operations = body.operations ?? [];
+      all.push(...operations);
+      onPage?.(operations.length);
+      const next = body.nextCursor ?? null;
+      if (!next || operations.length === 0 || next === cursor) return all;
+      cursor = next;
     }
     throw new Error(`T-API: выписка больше ${MAX_PAGES} страниц — проверьте период`);
   }
