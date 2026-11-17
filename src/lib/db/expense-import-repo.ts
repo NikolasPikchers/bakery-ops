@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@prisma/client';
 import { toDbDate } from './dates';
+import { reconcileExternalIds } from '../tbank/expense-key';
 
 export type ImportedExpense = {
   externalId: string;
@@ -54,10 +55,20 @@ export async function bulkInsertExpenses(
   rows: ImportedExpense[],
 ): Promise<{ imported: number; skipped: number }> {
   if (rows.length === 0) return { imported: 0, skipped: 0 };
-  const ids = rows.map((r) => r.externalId);
-  const existing = await prisma.expense.findMany({ where: { externalId: { in: ids } }, select: { externalId: true } });
-  const have = new Set(existing.map((e) => e.externalId));
-  const toCreate = rows.filter((r) => !have.has(r.externalId));
+  // Банковские расходы за даты файла (с запасом в день): та же операция могла прийти из T-API
+  // с externalId в другом формате записи — сопоставляем по каноническому ключу.
+  const dates = rows.map((r) => r.date).filter(Boolean).sort();
+  const dayMs = 86_400_000;
+  const existing = await prisma.expense.findMany({
+    where: {
+      source: 'tbusiness' as never,
+      date: { gte: new Date(toDbDate(dates[0]).getTime() - dayMs), lte: new Date(toDbDate(dates[dates.length - 1]).getTime() + dayMs) },
+    },
+    select: { externalId: true },
+  });
+  const known = existing.flatMap((e) => (e.externalId ? [e.externalId] : []));
+  const have = new Set(known);
+  const toCreate = reconcileExternalIds(rows, known).rows.filter((r) => !have.has(r.externalId));
   if (toCreate.length > 0) {
     await prisma.expense.createMany({
       data: toCreate.map((r) => ({

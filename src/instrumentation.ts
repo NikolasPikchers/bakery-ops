@@ -10,14 +10,20 @@ export async function register() {
   const state = globalThis as typeof globalThis & { __stopIikoScheduler?: () => void };
   if (state.__stopIikoScheduler) return;
 
-  const [{ startIikoScheduler }, { runIikoSync, syncWindow, iikoAuthFromEnv }, { getPrisma }] = await Promise.all([
-    import('@/lib/iiko/scheduler'),
-    import('@/lib/iiko/sync'),
-    import('@/lib/db/client'),
-  ]);
+  const [{ startIikoScheduler }, { runIikoSync, syncWindow, iikoAuthFromEnv }, { runTbankSync, tbankSyncWindow }, { runNightlySync }, { getPrisma }] =
+    await Promise.all([
+      import('@/lib/iiko/scheduler'),
+      import('@/lib/iiko/sync'),
+      import('@/lib/tbank/sync'),
+      import('@/lib/nightly-sync'),
+      import('@/lib/db/client'),
+    ]);
   iikoAuthFromEnv();
-  state.__stopIikoScheduler = startIikoScheduler(async () => {
-    const summary = await runIikoSync(getPrisma(), syncWindow(new Date()));
-    console.log('Scheduled iiko sync:', JSON.stringify(summary));
-  });
+  // 04:00 МСК: выручка из iiko и расходы из Т-Бизнеса (если задан токен банка).
+  state.__stopIikoScheduler = startIikoScheduler(() =>
+    runNightlySync([
+      { name: 'iiko', run: () => runIikoSync(getPrisma(), syncWindow(new Date())) },
+      ...(process.env.TBUSINESS_API_TOKEN ? [{ name: 'tbank', run: () => runTbankSync(getPrisma(), tbankSyncWindow(new Date())) }] : []),
+    ]),
+  );
 }

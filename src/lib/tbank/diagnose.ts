@@ -3,19 +3,13 @@
 // уже загружены расходы. Отчёт без значений: только имена полей, счётчики и маски форматов.
 import { categorize } from './categorize';
 import { moscowDate, type TbankRawOperation } from './client';
-import { parseAmount, toIsoDate } from './parse-statement';
+import { canonicalExpenseKey } from './expense-key';
 import type { BankOperation } from './types';
 
 export type ExistingExpense = { externalId: string; category: string };
 
-/** externalId из файла «счёт|номер|ДД.ММ.ГГГГ|сумма» → «счёт|номер|ГГГГ-ММ-ДД|сумма.00». */
-export function csvCanonicalKey(externalId: string): string | null {
-  const [acc, payno, date, amount] = externalId.split('|');
-  if (!acc || payno === undefined || !date || amount === undefined) return null;
-  const iso = toIsoDate(date);
-  if (!iso) return null;
-  return `${acc}|${payno}|${iso}|${parseAmount(amount).toFixed(2)}`;
-}
+/** Канонический ключ расхода (файл или API) — см. expense-key.ts. */
+export const csvCanonicalKey = canonicalExpenseKey;
 
 /** Формат без значения: цифры → 9, буквы → a. */
 export function mask(value: string): string {

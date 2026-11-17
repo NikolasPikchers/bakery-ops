@@ -14,6 +14,7 @@ export type BankOperation = {
   counterparty: string | null;
   inn: string | null;
   purpose: string | null; // назначение платежа
+  selfTransfer?: boolean; // перевод между своими счетами (T-API: category self*) — не расход
 };
 
 export type ImportSummary = {

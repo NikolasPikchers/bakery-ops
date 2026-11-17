@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { EXPENSE_CATEGORIES, categoryLabel } from '@/lib/finance/categories';
 import type { ExpenseListItem } from '@/lib/db/finance-repo';
 import { Card, CardHead, Empty, Table, btnStyle, headRowStyle, inputStyle, numStyle, rowStyle } from '../_ui';
+import { TbankSyncCard } from './TbankSyncCard';
 
 const rub = (n: number) => '₽ ' + Math.round(n).toLocaleString('ru-RU');
 const SESSION_EXPIRED = 'Сессия истекла — выйдите и войдите заново, затем повторите.';
@@ -175,9 +176,11 @@ export function ExpensesClient({ expenses, total, today }: { expenses: ExpenseLi
         </p>
       </Card>
 
-      {/* Загрузка выписки */}
+      <TbankSyncCard />
+
+      {/* Загрузка выписки — запасной путь, если банк по API недоступен */}
       <Card>
-        <CardHead title="Загрузить выписку Т-Банка" mb={6} />
+        <CardHead title="Загрузить выписку Т-Банка вручную" mb={6} />
         <p style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600, marginTop: 0, marginBottom: 14, lineHeight: 1.5 }}>
           Т-Бизнес → счёт → <b>Выписка</b> → скачать в формате <b>CSV</b> (или .zip с CSV). Загрузи файл сюда — расходы сами
           разнесутся по категориям (по ИНН/назначению), переводы себе исключатся. Все расходы идут на <b>Плюшкино</b>.

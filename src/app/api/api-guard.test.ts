@@ -7,6 +7,7 @@ import * as attendance from '@/app/api/fot/attendance/route';
 import * as adjustments from '@/app/api/fot/adjustments/route';
 import * as employee from '@/app/api/fot/employees/[id]/route';
 import * as iikoSync from '@/app/api/revenue/iiko-sync/route';
+import * as tbankSync from '@/app/api/expenses/tbank-sync/route';
 import * as iikoUpload from '@/app/api/revenue/iiko-upload/route';
 import * as revenueManual from '@/app/api/revenue/manual/route';
 import * as sheet from '@/app/api/sheets/[id]/route';
@@ -28,6 +29,7 @@ const cases: [string, () => Promise<Response>][] = [
   ['POST /api/fot/adjustments', () => adjustments.POST(req())],
   ['PATCH /api/fot/employees/[id]', () => employee.PATCH(req(), params)],
   ['POST /api/revenue/iiko-sync', () => iikoSync.POST(req())],
+  ['POST /api/expenses/tbank-sync', () => tbankSync.POST(req())],
   ['POST /api/revenue/iiko-upload', () => iikoUpload.POST(req())],
   ['POST /api/revenue/manual', () => revenueManual.POST(req())],
   ['PATCH /api/sheets/[id]', () => sheet.PATCH(req(), params)],

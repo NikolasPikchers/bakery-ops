@@ -8,6 +8,7 @@ const EXCLUDE_PURPOSE_WORDS = ['перевод собственных средс
 /** Подлежит ли операция импорту как бизнес-расход (исходящая и не вывод средств себе). */
 export function isImportableExpense(op: BankOperation): boolean {
   if (op.direction !== 'out') return false;
+  if (op.selfTransfer) return false;
   if (op.inn && OWNER_INNS.has(op.inn)) return false;
   const p = (op.purpose ?? '').toLowerCase();
   return !EXCLUDE_PURPOSE_WORDS.some((w) => p.includes(w));
