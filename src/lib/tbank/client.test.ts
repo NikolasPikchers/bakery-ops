@@ -52,6 +52,22 @@ describe('TBusinessClient', () => {
     expect(calls[1].url.searchParams.get('cursor')).toBe('C2');
   });
 
+  it('сетевая ошибка — с кодом причины (TLS, таймаут, DNS), а не голое «fetch failed»', async () => {
+    const fetchImpl = (async () => {
+      throw Object.assign(new Error('fetch failed'), { cause: { code: 'SELF_SIGNED_CERT_IN_CHAIN', message: 'self-signed certificate in certificate chain' } });
+    }) as unknown as typeof fetch;
+    const err = await new TBusinessClient({ token: 't.abc', fetchImpl }).getAccounts().catch((e: Error) => e);
+    expect(String(err)).toMatch(/bank-accounts.*SELF_SIGNED_CERT_IN_CHAIN.*self-signed/);
+  });
+
+  it('ошибка без cause — код берётся с самой ошибки', async () => {
+    const fetchImpl = (async () => {
+      throw Object.assign(new Error('connect ETIMEDOUT 1.2.3.4:443'), { code: 'ETIMEDOUT' });
+    }) as unknown as typeof fetch;
+    const err = await new TBusinessClient({ token: 't.abc', fetchImpl }).getAccounts().catch((e: Error) => e);
+    expect(String(err)).toMatch(/ETIMEDOUT/);
+  });
+
   it('не-2xx — ошибка с путём, кодом и текстом банка (без токена)', async () => {
     const { fetchImpl } = fakeFetch(() => ({ status: 403, body: { errorMessage: 'IP not allowed' } }));
     const c = new TBusinessClient({ token: 't.secret-token', fetchImpl });
