@@ -1,4 +1,5 @@
 import { monthLabel, nextMonth, prevMonth } from '@/lib/finance/month';
+import { LogoutButton } from '../LogoutButton';
 
 export const PIES = '#1a4633';
 export const CONF_INK = '#4c805a';
@@ -18,12 +19,17 @@ export function StaffPage({ tab, title, month, showOwnerLink, children }: { tab:
     <div style={{ minHeight: '100dvh', background: 'var(--bg)', paddingBottom: 'calc(72px + env(safe-area-inset-bottom))' }}>
       <div style={{ maxWidth: 480, margin: '0 auto', padding: '0 14px' }}>
         <header style={{ position: 'sticky', top: 0, zIndex: 5, background: 'var(--bg)', padding: 'calc(env(safe-area-inset-top) + 12px) 0 10px' }}>
-          {showOwnerLink && (
-            // eslint-disable-next-line @next/next/no-html-link-for-pages
-            <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
-              ← к учёту
-            </a>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 44 }}>
+            {showOwnerLink ? (
+              // eslint-disable-next-line @next/next/no-html-link-for-pages
+              <a href="/" style={{ display: 'inline-flex', alignItems: 'center', minHeight: 44, fontSize: 13, fontWeight: 700, color: 'var(--muted)' }}>
+                ← к учёту
+              </a>
+            ) : (
+              <span />
+            )}
+            <LogoutButton style={{ minHeight: 36, padding: '0 12px', fontSize: 13 }} />
+          </div>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10 }}>
             <h1 style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.02em', color: 'var(--ink)', minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</h1>
             <nav aria-label="Месяц" style={{ display: 'flex', alignItems: 'center', background: 'var(--card)', border: '1px solid var(--line)', borderRadius: 14, flexShrink: 0 }}>

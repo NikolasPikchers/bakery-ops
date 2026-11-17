@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { LogoutButton } from './LogoutButton';
 
 type NavItem = { href: string; label: string };
 
@@ -102,6 +103,7 @@ export function AppShell({ authed, children }: { authed: boolean; children: Reac
         >
           НП
         </span>
+        <LogoutButton />
       </header>
 
       <main style={{ flex: 1, minWidth: 0, overflowY: 'auto' }}>{children}</main>
