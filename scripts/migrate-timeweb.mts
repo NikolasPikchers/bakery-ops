@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { closeSync, openSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { rootCertificates } from 'node:tls';
 import { parse } from 'dotenv';
 import pg from 'pg';
 import { databaseOptions } from '../src/lib/db/connection-options';
@@ -27,14 +28,13 @@ async function counts(client: pg.Client): Promise<Record<string, number>> {
 /** Credentials travel in environment variables, never command-line arguments or logs. */
 async function postgresTool(command: 'pg_dump' | 'pg_restore', url: string, env: Env, args: string[], backup: string, directory: string) {
   const parsed = new URL(url);
-  const ca = env.DATABASE_CA_CERT?.replace(/\\n/g, '\n');
-  const rootCertificate = ca ? '/tmp/database-ca.crt' : '/etc/ssl/certs/ca-certificates.crt';
+  // Keep certificate verification independent of the image's installed CA packages.
+  const ca = env.DATABASE_CA_CERT?.replace(/\\n/g, '\n') || rootCertificates.join('\n') + '\n';
+  const rootCertificate = '/tmp/database-ca.crt';
   const dockerArgs = ['run', '--rm', '-i'];
-  if (ca) {
-    const path = join(directory, 'database-ca.crt');
-    writeFileSync(path, ca, { mode: 0o600 });
-    dockerArgs.push('--mount', `type=bind,source=${path},target=/tmp/database-ca.crt,readonly`);
-  }
+  const path = join(directory, 'database-ca.crt');
+  writeFileSync(path, ca, { mode: 0o600 });
+  dockerArgs.push('--mount', `type=bind,source=${path},target=${rootCertificate},readonly`);
   const pgEnv = {
     PGHOST: parsed.hostname,
     PGPORT: parsed.port || '5432',
