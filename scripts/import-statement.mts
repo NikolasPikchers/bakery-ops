@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { databaseOptions } from '../src/lib/db/connection-options';
 import { parseStatementCsv } from '../src/lib/tbank/parse-statement';
 import { categorize, isImportableExpense } from '../src/lib/tbank/categorize';
 import { importExpenses } from '../src/lib/tbank/import-expenses';
@@ -56,7 +57,7 @@ async function main() {
     return;
   }
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(databaseOptions()) });
   try {
     const summary = await importExpenses({
       fetchStatement: async () => ops,

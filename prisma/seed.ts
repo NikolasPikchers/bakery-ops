@@ -1,9 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { databaseOptions } from '../src/lib/db/connection-options';
 import { SEED_CATALOG } from '../src/lib/catalog/seed-catalog';
 import { POINTS } from '../src/lib/domain/points';
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+const adapter = new PrismaPg(databaseOptions());
 const prisma = new PrismaClient({ adapter });
 
 async function main() {

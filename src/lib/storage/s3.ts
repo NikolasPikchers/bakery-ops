@@ -40,13 +40,13 @@ export function createS3BlobStore(config: S3Config, client = new S3Client({
   return {
     async put(key, bytes, contentType) {
       checkKey(key);
-      await client.send(new PutObjectCommand({ Bucket: config.bucket, Key: key, Body: bytes, ContentType: contentType }));
+      await client.send(new PutObjectCommand({ Bucket: config.bucket, Key: key, Body: bytes, ContentType: contentType }), { abortSignal: AbortSignal.timeout(30_000) });
       // A private bucket keeps photos behind the application's existing owner login.
       return { url: `/api/storage/${key}` };
     },
     async read(key) {
       checkKey(key);
-      const result = await client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }));
+      const result = await client.send(new GetObjectCommand({ Bucket: config.bucket, Key: key }), { abortSignal: AbortSignal.timeout(30_000) });
       if (!result.Body) throw new Error('Empty S3 image');
       return { bytes: await result.Body.transformToByteArray(), contentType: result.ContentType || 'application/octet-stream' };
     },

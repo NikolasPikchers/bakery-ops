@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { databaseOptions } from '../src/lib/db/connection-options';
 import { IikoClient } from '../src/lib/iiko/client';
 import { iikoAuthFromEnv, runIikoSync, syncWindow } from '../src/lib/iiko/sync';
 
@@ -27,7 +28,7 @@ async function main() {
     return;
   }
 
-  const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });
+  const prisma = new PrismaClient({ adapter: new PrismaPg(databaseOptions()) });
   try {
     console.log(JSON.stringify(await runIikoSync(prisma, range)));
   } finally {
