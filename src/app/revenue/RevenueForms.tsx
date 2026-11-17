@@ -20,6 +20,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 export function RevenueForms() {
   const router = useRouter();
 
+  // Плюшкино — синхронизация с iiko
+  const [sFrom, setSFrom] = useState('');
+  const [sTill, setSTill] = useState('');
+  const [sBusy, setSBusy] = useState(false);
+  const [sMsg, setSMsg] = useState('');
+  const [sOk, setSOk] = useState(false);
+
   // Плюшкино — загрузка xlsx
   const [files, setFiles] = useState<FileList | null>(null);
   const [upBusy, setUpBusy] = useState(false);
@@ -34,6 +41,32 @@ export function RevenueForms() {
   const [mBusy, setMBusy] = useState(false);
   const [mMsg, setMMsg] = useState('');
   const [mOk, setMOk] = useState(false);
+
+  async function syncIiko(e: React.FormEvent) {
+    e.preventDefault();
+    if ((sFrom && !sTill) || (!sFrom && sTill)) {
+      setSOk(false);
+      setSMsg('Укажите обе даты или оставьте обе пустыми');
+      return;
+    }
+    setSBusy(true);
+    setSOk(false);
+    setSMsg('Запрашиваю iiko…');
+    const res = await fetch('/api/revenue/iiko-sync', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: sFrom ? JSON.stringify({ from: sFrom, till: sTill }) : undefined,
+    });
+    const data = await res.json().catch(() => ({}));
+    setSBusy(false);
+    if (!res.ok) {
+      setSMsg(data.error ?? 'Ошибка синхронизации');
+      return;
+    }
+    setSOk(true);
+    setSMsg(`Готово за ${data.from} — ${data.till}: дней с продажами ${data.days}, добавлено ${data.imported}, обновлено ${data.updated}.`);
+    router.refresh();
+  }
 
   async function uploadXlsx(e: React.FormEvent) {
     e.preventDefault();
@@ -95,9 +128,28 @@ export function RevenueForms() {
 
   return (
     <>
-      {/* Загрузка выгрузок iiko */}
+      {/* Синхронизация с iiko (Cloud API) */}
       <Card>
-        <CardHead title="Загрузить выгрузки iiko" meta={<>точка: <b style={{ color: 'var(--ink)' }}>Плюшкино</b></>} mb={6} />
+        <CardHead title="Выручка из iiko" meta={<>точка: <b style={{ color: 'var(--ink)' }}>Плюшкино</b></>} mb={6} />
+        <p style={{ ...hintStyle, marginBottom: 14 }}>
+          Подтягивается сама: при открытии дашборда и каждую ночь — за вчера и сегодня, вместе с кондитеркой.
+          Кнопка — обновить прямо сейчас; чтобы перезалить прошлый период, укажите даты (до 31 дня).
+        </p>
+        <form onSubmit={syncIiko} style={{ display: 'flex', gap: 10, alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <Field label="Дата с (необяз.)">
+            <input type="date" value={sFrom} onChange={(e) => setSFrom(e.target.value)} style={inputStyle} />
+          </Field>
+          <Field label="Дата по (необяз.)">
+            <input type="date" value={sTill} onChange={(e) => setSTill(e.target.value)} style={inputStyle} />
+          </Field>
+          <button type="submit" style={{ ...btnStyle, opacity: sBusy ? 0.6 : 1 }} disabled={sBusy}>{sBusy ? 'Обновляю…' : 'Обновить из iiko'}</button>
+          {sMsg && <span style={{ ...noteStyle, color: sOk ? 'var(--profit)' : 'var(--muted)' }}>{sMsg}</span>}
+        </form>
+      </Card>
+
+      {/* Загрузка выгрузок iiko — запасной путь */}
+      <Card>
+        <CardHead title="Загрузить выгрузки iiko (xlsx)" meta={<>точка: <b style={{ color: 'var(--ink)' }}>Плюшкино</b></>} mb={6} />
         <p style={{ ...hintStyle, marginBottom: 14 }}>
           Дневные выгрузки продаж из iiko — оба формата: «Табличные данные» и «Категории и блюда».
           Дата берётся из шапки отчёта («Период»), а если её нет — из имени файла

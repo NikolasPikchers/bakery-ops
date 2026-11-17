@@ -15,5 +15,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ['/((?!api/auth|api/telegram|login|_next/static|_next/image|favicon.ico).*)'],
+  // api/cron — Vercel Cron без сессии, роут сам проверяет CRON_SECRET.
+  matcher: ['/((?!api/auth|api/telegram|api/cron|login|_next/static|_next/image|favicon.ico).*)'],
 };

@@ -5,6 +5,7 @@ import { currentMonth, monthLabel, prevMonth, nextMonth } from '@/lib/finance/mo
 import { categoryLabel } from '@/lib/finance/categories';
 import { POINTS } from '@/lib/domain/points';
 import { Sparkline, Donut, DailyBars, ProfitBars } from './_charts';
+import { IikoAutoSync } from './IikoAutoSync';
 import styles from './ui.module.css';
 
 export const runtime = 'nodejs';
@@ -128,6 +129,7 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           </div>
         </div>
         <div style={{ display: 'flex', gap: 12, alignItems: 'center' }}>
+          <IikoAutoSync />
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'var(--card)', padding: '6px 8px', borderRadius: 12, border: '1px solid var(--line)' }}>
             <Link href={q(point, prevMonth(month))} style={{ width: 30, height: 30, borderRadius: 8, display: 'grid', placeItems: 'center', color: 'var(--muted)', fontSize: 17 }}>‹</Link>
             <span style={{ fontSize: 13.5, fontWeight: 700, color: 'var(--ink)', minWidth: 110, textAlign: 'center' }}>{monthLabel(month)}</span>

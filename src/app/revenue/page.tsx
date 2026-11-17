@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export default function RevenuePage() {
   return (
     <div style={pageStyle}>
-      <PageHeader title="Выручка" subtitle="Плюшкино — выгрузки из iiko, Корица — вручную" />
+      <PageHeader title="Выручка" subtitle="Плюшкино — из iiko автоматически, Корица — вручную" />
       <RevenueForms />
     </div>
   );
