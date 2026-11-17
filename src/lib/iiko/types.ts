@@ -1,3 +1,4 @@
 export type IikoOrg = { id: string; name: string };
-export type DailyRevenue = { date: string; amount: number }; // ISO день, ₽ (нетто после скидок)
+/** Выручка за учётный день iiko, ₽ после скидок; confectionery — её часть по кондитерке. */
+export type DailyRevenue = { date: string; amount: number; confectionery: number };
 export type RevenueImportSummary = { days: number; imported: number; updated: number };

@@ -2,7 +2,7 @@ import type { DailyRevenue, RevenueImportSummary } from './types';
 
 export type RevenueImportDeps = {
   fetchSales: (from: string, till: string) => Promise<DailyRevenue[]>;
-  upsert: (pointId: string, date: string, amount: number) => Promise<'imported' | 'updated'>;
+  upsert: (pointId: string, day: DailyRevenue) => Promise<'imported' | 'updated'>;
   pointId: string;
   from: string;
   till: string;
@@ -16,7 +16,7 @@ export async function importRevenue(deps: RevenueImportDeps): Promise<RevenueImp
   for (const d of all) {
     if (!d.date || d.amount <= 0) continue;
     days++;
-    const r = await deps.upsert(deps.pointId, d.date, d.amount);
+    const r = await deps.upsert(deps.pointId, d);
     if (r === 'imported') imported++;
     else updated++;
   }

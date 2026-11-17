@@ -1,15 +1,52 @@
+import { isConfectionery } from './dish-kind';
 import type { DailyRevenue, IikoOrg } from './types';
 
-export type IikoAuth =
-  | { mode: 'apiLogin'; apiLogin: string }
-  | { mode: 'app'; appId: string; apiKey: string; clientSecret: string };
+/** Ключи iikoCloud API: appId и clientSecret — с портала разработчика (api.iiko.help), apiKey — из iikoWeb. */
+export type IikoAuth = { appId: string; apiKey: string; clientSecret: string };
 
 export type IikoConfig = { auth: IikoAuth; baseUrl?: string; timeoutMs?: number; fetchImpl?: typeof fetch };
 
-// ⚠️ ADJUST ON FIRST REAL RESPONSE: host / пути / имена полей OLAP.
+export type OlapColumn = { name: string; displayName?: string; type?: string };
+
 const DEFAULT_BASE = 'https://api-ru.iiko.services';
-const OLAP_REVENUE_FIELD = 'DishDiscountSumInt'; // нетто-выручка после скидок
-const OLAP_DATE_FIELD = 'OpenDate.Typed';
+// Поля OLAP SALES сверены с /api/reporting/v1/olap/columns/get (ноябрь 2026).
+const DATE_FIELD = 'OpenDate.Typed'; // «Учетный день»
+const DISH_FIELD = 'DishName'; // «Блюдо»
+const REVENUE_FIELD = 'DishDiscountSumInt'; // «Сумма со скидкой» — совпадает с «Суммой продажи» в xlsx-выгрузках
+/** iiko ограничивает период CUSTOM в OLAP 31 днём включительно. */
+const MAX_OLAP_DAYS = 31;
+
+const DAY_MS = 86_400_000;
+const toMs = (iso: string) => Date.parse(`${iso}T00:00:00.000Z`);
+const toIso = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+const round2 = (n: number) => Math.round(n * 100) / 100;
+
+/** Период [from; till] включительно → отрезки не длиннее maxDays дней. */
+export function splitRange(from: string, till: string, maxDays = MAX_OLAP_DAYS): { from: string; till: string }[] {
+  const out: { from: string; till: string }[] = [];
+  const end = toMs(till);
+  for (let start = toMs(from); start <= end; start += maxDays * DAY_MS) {
+    out.push({ from: toIso(start), till: toIso(Math.min(start + (maxDays - 1) * DAY_MS, end)) });
+  }
+  return out;
+}
+
+/** Строки OLAP «день × блюдо» → выручка по дням (с кондитеркой), по возрастанию даты. */
+export function aggregateDailySales(rows: Record<string, unknown>[]): DailyRevenue[] {
+  const byDay = new Map<string, { amount: number; confectionery: number }>();
+  for (const r of rows) {
+    const date = String(r[DATE_FIELD] ?? '').slice(0, 10);
+    if (!date) continue;
+    const sum = Number(r[REVENUE_FIELD] ?? 0) || 0;
+    const day = byDay.get(date) ?? { amount: 0, confectionery: 0 };
+    day.amount += sum;
+    if (isConfectionery(String(r[DISH_FIELD] ?? ''))) day.confectionery += sum;
+    byDay.set(date, day);
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, d]) => ({ date, amount: round2(d.amount), confectionery: round2(d.confectionery) }));
+}
 
 export class IikoClient {
   private auth: IikoAuth;
@@ -21,19 +58,23 @@ export class IikoClient {
   constructor(cfg: IikoConfig) {
     this.auth = cfg.auth;
     this.baseUrl = cfg.baseUrl ?? DEFAULT_BASE;
-    this.timeoutMs = cfg.timeoutMs ?? 30_000;
+    this.timeoutMs = cfg.timeoutMs ?? 45_000;
     this.fetchImpl = cfg.fetchImpl ?? fetch;
   }
 
-  private async post(path: string, body: unknown, auth = true): Promise<Record<string, unknown>> {
+  private async post(path: string, body: unknown, auth = true): Promise<unknown> {
     const ac = new AbortController();
     const timer = setTimeout(() => ac.abort(), this.timeoutMs);
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (auth) headers.Authorization = `Bearer ${await this.getToken()}`;
+      if (auth) {
+        headers.Authorization = `Bearer ${await this.getToken()}`;
+        // Сколько iiko ждёт свой сервер (по умолчанию 15 с) — чуть меньше нашего таймаута.
+        headers.Timeout = String(Math.max(1, Math.floor(this.timeoutMs / 1000) - 5));
+      }
       const res = await this.fetchImpl(this.baseUrl + path, { method: 'POST', headers, body: JSON.stringify(body), signal: ac.signal });
-      if (!res.ok) throw new Error(`iiko ${path} → HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`);
-      return (await res.json()) as Record<string, unknown>;
+      if (!res.ok) throw new Error(`iiko ${path} → HTTP ${res.status}: ${(await res.text()).slice(0, 300)}`);
+      return await res.json();
     } finally {
       clearTimeout(timer);
     }
@@ -41,47 +82,43 @@ export class IikoClient {
 
   private async getToken(): Promise<string> {
     if (this.token) return this.token;
-    const [path, body]: [string, Record<string, string>] =
-      this.auth.mode === 'apiLogin'
-        ? ['/api/1/access_token', { apiLogin: this.auth.apiLogin }]
-        : ['/api/v2/access_token', { appId: this.auth.appId, apiKey: this.auth.apiKey, clientSecret: this.auth.clientSecret }];
-    const data = await this.post(path, body, false);
-    const token = data.token as string | undefined;
-    if (!token) throw new Error('iiko: токен не получен');
-    this.token = token;
-    return token;
-  }
-
-  async getOrganizations(): Promise<IikoOrg[]> {
-    const data = await this.post('/api/1/organizations', { returnAdditionalInfo: false, includeDisabled: true });
-    const orgs = (data.organizations ?? []) as Record<string, unknown>[];
-    return orgs.map((o) => ({ id: String(o.id ?? ''), name: String(o.name ?? '') }));
-  }
-
-  private olapBody(orgId: string, from: string, till: string) {
-    // ⚠️ ADJUST ON FIRST REAL RESPONSE
-    return {
-      organizationId: orgId,
-      reportType: 'SALES',
-      buildSummary: false,
-      groupByRowFields: [OLAP_DATE_FIELD],
-      groupByColFields: [],
-      aggregateFields: [OLAP_REVENUE_FIELD],
-      filters: { [OLAP_DATE_FIELD]: { filterType: 'DateRange', periodType: 'CUSTOM', from, to: till } },
+    const data = (await this.post('/api/v2/access_token', { appId: this.auth.appId, apiKey: this.auth.apiKey, clientSecret: this.auth.clientSecret }, false)) as {
+      token?: string;
     };
+    if (!data?.token) throw new Error('iiko: токен не получен');
+    this.token = data.token;
+    return data.token;
   }
 
-  async getOlapSales(orgId: string, from: string, till: string): Promise<DailyRevenue[]> {
-    const data = await this.post('/api/1/reports/olap', this.olapBody(orgId, from, till));
-    const rows = (data.data ?? []) as Record<string, unknown>[];
-    return rows.map((r) => ({
-      date: String(r[OLAP_DATE_FIELD] ?? '').slice(0, 10),
-      amount: Number(r[OLAP_REVENUE_FIELD] ?? 0) || 0,
-    }));
+  /** Организации, к которым даёт доступ apiKey. */
+  async getOrganizations(): Promise<IikoOrg[]> {
+    const data = (await this.post('/api/1/organizations', { returnAdditionalInfo: false, includeDisabled: true })) as { organizations?: Record<string, unknown>[] };
+    return (data.organizations ?? []).map((o) => ({ id: String(o.id ?? ''), name: String(o.name ?? '') }));
   }
 
-  /** Для --debug: список колонок OLAP SALES (финализация полей на первом прогоне). */
-  async getOlapColumns(): Promise<Record<string, unknown>> {
-    return this.post('/api/1/reports/olap/columns/SALES', {});
+  /** Выручка по учётным дням [from; till] включительно (без удалённых заказов и блюд). */
+  async getDailySales(from: string, till: string): Promise<DailyRevenue[]> {
+    const out: DailyRevenue[] = [];
+    for (const part of splitRange(from, till)) {
+      const data = (await this.post('/api/reporting/v1/olap/get', {
+        reportType: 'SALES',
+        buildSummary: false,
+        groupByRowFields: [DATE_FIELD, DISH_FIELD],
+        groupByColFields: [],
+        aggregateFields: [REVENUE_FIELD],
+        filters: [
+          { name: DATE_FIELD, filterType: 'DateRange', periodType: 'CUSTOM', from: part.from, to: part.till, includeLow: true, includeHigh: true },
+          { name: 'OrderDeleted', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
+          { name: 'DeletedWithWriteoff', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
+        ],
+      })) as { data?: Record<string, unknown>[] };
+      out.push(...aggregateDailySales(data.data ?? []));
+    }
+    return out;
+  }
+
+  /** Поля OLAP SALES — для --debug, когда iiko поменяет набор полей. */
+  async getOlapColumns(): Promise<OlapColumn[]> {
+    return (await this.post('/api/reporting/v1/olap/columns/get', { reportType: 'SALES' })) as OlapColumn[];
   }
 }

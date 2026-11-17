@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { isConfectionery } from './dish-kind';
 
 export type SalesPeriod = { from: string; till: string };
 
@@ -126,7 +127,7 @@ export async function parseSalesXlsx(buf: ArrayBuffer | Uint8Array): Promise<Par
     if (Number.isFinite(v)) {
       total += v;
       positions++;
-      if (name.startsWith('\\')) confectionery += v;
+      if (isConfectionery(name)) confectionery += v;
     }
   });
   const round2 = (n: number) => Math.round(n * 100) / 100;
