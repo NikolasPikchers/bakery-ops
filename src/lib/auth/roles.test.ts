@@ -71,6 +71,17 @@ describe('accessDecision', () => {
     expect(accessDecision('staff', '/api/health')).toEqual(allow);
     expect(accessDecision(null, '/api/health-private')).toEqual({ kind: 'deny', status: 401 });
   });
+  it('логотип открыт без входа — он нужен на самой странице входа', () => {
+    expect(accessDecision(null, '/nikas-logo-white.png')).toEqual(allow);
+    expect(accessDecision('staff', '/nikas-logo-white.png')).toEqual(allow);
+  });
+  it('иконка для экрана iPhone открыта без входа', () => {
+    expect(accessDecision(null, '/apple-icon.png')).toEqual(allow);
+  });
+  it('прочие файлы с точкой в пути — по общим правилам (фото листов не открываются без входа)', () => {
+    expect(accessDecision(null, '/api/storage/sheets/abc.jpg')).toEqual({ kind: 'deny', status: 401 });
+    expect(accessDecision(null, '/nikas-logo-white.png.evil')).toEqual({ kind: 'redirect', to: '/login' });
+  });
   it('без сессии: страницы → /login, API → 401', () => {
     expect(accessDecision(null, '/')).toEqual({ kind: 'redirect', to: '/login' });
     expect(accessDecision(null, '/staff')).toEqual({ kind: 'redirect', to: '/login' });

@@ -1,0 +1,116 @@
+/* Вход — в стиле дашборда: фон --bg, белая карточка, Manrope, зелёный логотип и акцент --profit. */
+.page {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  padding: 24px 16px;
+  background: var(--bg);
+}
+
+.card {
+  width: 100%;
+  max-width: 380px;
+  padding: 36px 32px 32px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(31, 42, 37, 0.08);
+  text-align: center;
+}
+
+.logo {
+  width: 72px;
+  height: 72px;
+  margin: 0 auto 18px;
+  border-radius: 20px;
+  background: var(--brand);
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 18px rgba(63, 125, 95, 0.3);
+}
+
+.logo img {
+  width: 76%;
+  height: auto;
+  display: block;
+}
+
+.title {
+  margin: 0;
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  color: var(--profit);
+}
+
+.subtitle {
+  margin: 6px 0 28px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+}
+
+.label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.input {
+  width: 100%;
+  height: 48px;
+  padding: 0 14px;
+  border: 1px solid #d7e0db;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  font: inherit;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.input:focus {
+  border-color: var(--brand);
+  box-shadow: 0 0 0 4px rgba(143, 188, 155, 0.3);
+}
+
+.error {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--expense);
+}
+
+.button {
+  height: 48px;
+  border: 0;
+  border-radius: 14px;
+  background: var(--profit);
+  color: #fff;
+  font: inherit;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(46, 125, 91, 0.25);
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.button:hover:not(:disabled) {
+  background: #276b4e;
+}
+
+.button:disabled {
+  opacity: 0.45;
+  cursor: default;
+  box-shadow: none;
+}
