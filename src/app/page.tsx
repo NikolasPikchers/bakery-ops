@@ -6,6 +6,8 @@ import { categoryLabel } from '@/lib/finance/categories';
 import { POINTS } from '@/lib/domain/points';
 import { Sparkline, Donut, DailyBars, ProfitBars } from './_charts';
 import { IikoAutoSync } from './IikoAutoSync';
+import { AssortmentCard } from './assortment/AssortmentCard';
+import { loadAssortment } from './assortment/load';
 import styles from './ui.module.css';
 
 export const runtime = 'nodejs';
@@ -107,7 +109,14 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
   const point: DashboardPoint = sp.point === 'point-1' || sp.point === 'point-2' ? sp.point : 'all';
   const month = /^\d{4}-(0[1-9]|1[0-2])$/.test(sp.month ?? '') ? (sp.month as string) : currentMonth(new Date());
 
-  const v = await loadDashboard(getPrisma(), { point, month });
+  const [v, assortment] = await Promise.all([
+    loadDashboard(getPrisma(), { point, month }),
+    // Карточка «Ассортимент» — дополнение: её сбой не должен ронять дашборд.
+    loadAssortment(3).catch((e: unknown) => {
+      console.error('Dashboard assortment card:', e instanceof Error ? e.message : e);
+      return null;
+    }),
+  ]);
   const f = v.finance;
   const expenseTotal = f.byCategory.reduce((s, c) => s + c.amount, 0);
   const q = (p: DashboardPoint, mo: string) => `/?point=${p}&month=${mo}`;
@@ -197,6 +206,8 @@ export default async function Dashboard({ searchParams }: { searchParams: Promis
           <ProfitBars data={v.dailyProfit.map((d) => ({ date: d.date, value: d.amount }))} height={196} />
         )}
       </Panel>
+
+      <AssortmentCard view={assortment} />
     </div>
   );
 }

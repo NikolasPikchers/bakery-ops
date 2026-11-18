@@ -11,6 +11,7 @@ const NAV: NavItem[] = [
   { href: '/revenue', label: 'Выручка' },
   { href: '/expenses', label: 'Расходы' },
   { href: '/breakdown', label: 'Разбивка' },
+  { href: '/assortment', label: 'Ассортимент' },
   { href: '/fot', label: 'ФОТ' },
   { href: '/upload', label: 'Загрузить' },
 ];
