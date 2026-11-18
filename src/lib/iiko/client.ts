@@ -1,5 +1,6 @@
 import { isConfectionery } from './dish-kind';
-import type { DailyRevenue, IikoOrg } from './types';
+import { aggregateDishSales, DISH_AGGREGATES, DISH_ROW_FIELDS } from './dish-sales';
+import type { DailyRevenue, DishSaleDay, IikoOrg } from './types';
 
 /** Ключи iikoCloud API: appId и clientSecret — с портала разработчика (api.iiko.help), apiKey — из iikoWeb. */
 export type IikoAuth = { appId: string; apiKey: string; clientSecret: string };
@@ -96,23 +97,37 @@ export class IikoClient {
     return (data.organizations ?? []).map((o) => ({ id: String(o.id ?? ''), name: String(o.name ?? '') }));
   }
 
+  /** OLAP SALES за [from; till] (≤ 31 дня) без удалённых заказов и блюд. */
+  private async salesOlap(from: string, till: string, rowFields: readonly string[], aggregates: readonly string[]): Promise<Record<string, unknown>[]> {
+    const data = (await this.post('/api/reporting/v1/olap/get', {
+      reportType: 'SALES',
+      buildSummary: false,
+      groupByRowFields: rowFields,
+      groupByColFields: [],
+      aggregateFields: aggregates,
+      filters: [
+        { name: DATE_FIELD, filterType: 'DateRange', periodType: 'CUSTOM', from, to: till, includeLow: true, includeHigh: true },
+        { name: 'OrderDeleted', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
+        { name: 'DeletedWithWriteoff', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
+      ],
+    })) as { data?: Record<string, unknown>[] };
+    return data.data ?? [];
+  }
+
   /** Выручка по учётным дням [from; till] включительно (без удалённых заказов и блюд). */
   async getDailySales(from: string, till: string): Promise<DailyRevenue[]> {
     const out: DailyRevenue[] = [];
     for (const part of splitRange(from, till)) {
-      const data = (await this.post('/api/reporting/v1/olap/get', {
-        reportType: 'SALES',
-        buildSummary: false,
-        groupByRowFields: [DATE_FIELD, DISH_FIELD],
-        groupByColFields: [],
-        aggregateFields: [REVENUE_FIELD],
-        filters: [
-          { name: DATE_FIELD, filterType: 'DateRange', periodType: 'CUSTOM', from: part.from, to: part.till, includeLow: true, includeHigh: true },
-          { name: 'OrderDeleted', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
-          { name: 'DeletedWithWriteoff', filterType: 'IncludeValues', values: ['NOT_DELETED'] },
-        ],
-      })) as { data?: Record<string, unknown>[] };
-      out.push(...aggregateDailySales(data.data ?? []));
+      out.push(...aggregateDailySales(await this.salesOlap(part.from, part.till, [DATE_FIELD, DISH_FIELD], [REVENUE_FIELD])));
+    }
+    return out;
+  }
+
+  /** Продажи по позициям за учётные дни [from; till]: штуки, выручка, себестоимость, чеки. */
+  async getDishSales(from: string, till: string): Promise<DishSaleDay[]> {
+    const out: DishSaleDay[] = [];
+    for (const part of splitRange(from, till)) {
+      out.push(...aggregateDishSales(await this.salesOlap(part.from, part.till, DISH_ROW_FIELDS, DISH_AGGREGATES)));
     }
     return out;
   }
