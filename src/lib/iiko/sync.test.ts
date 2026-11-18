@@ -1,6 +1,6 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { iikoAuthFromEnv, syncIikoRevenue, syncWindow } from './sync';
-import type { DailyRevenue, IikoOrg } from './types';
+import type { DailyRevenue, DishSaleDay, IikoOrg } from './types';
 
 describe('iikoAuthFromEnv', () => {
   it('берёт три ключа из окружения', () => {
@@ -26,19 +26,30 @@ describe('syncWindow', () => {
   });
 });
 
-function fakeClient(orgs: IikoOrg[], days: DailyRevenue[]) {
+function fakeClient(orgs: IikoOrg[], days: DailyRevenue[], dishes: DishSaleDay[] | Error = []) {
   const asked: { from: string; till: string }[] = [];
+  const askedDishes: { from: string; till: string }[] = [];
   return {
     asked,
+    askedDishes,
     client: {
       getOrganizations: async () => orgs,
       getDailySales: async (from: string, till: string) => {
         asked.push({ from, till });
         return days;
       },
+      getDishSales: async (from: string, till: string) => {
+        askedDishes.push({ from, till });
+        if (dishes instanceof Error) throw dishes;
+        return dishes;
+      },
     },
   };
 }
+
+const pizza = (date: string): DishSaleDay => ({
+  date, dishId: 'pizza', name: '// Пицца', dishGroup: null, qty: 2, revenue: 252, cost: 0, checks: 2, soloChecks: 1,
+});
 
 describe('syncIikoRevenue', () => {
   const plyushkino = [{ id: 'org1', name: 'Пекарня "ПЛЮШКИНО"' }];
@@ -64,5 +75,50 @@ describe('syncIikoRevenue', () => {
     const { client } = fakeClient([...plyushkino, { id: 'org2', name: 'Корица' }], []);
     const upsert = async () => 'imported' as const;
     await expect(syncIikoRevenue({ client, upsert, from: '2026-11-16', till: '2026-11-17' })).rejects.toThrow(/2 организаци/);
+  });
+
+  it('вместе с выручкой заменяет продажи по позициям — по отрезкам iiko не длиннее 31 дня', async () => {
+    const { client, askedDishes } = fakeClient(plyushkino, [], [pizza('2026-11-16')]);
+    const replaced: unknown[][] = [];
+    const replaceDishes = async (pointId: string, from: string, till: string, rows: DishSaleDay[]) => {
+      replaced.push([pointId, from, till, rows.length]);
+      return rows.length;
+    };
+    const s = await syncIikoRevenue({ client, upsert: async () => 'imported' as const, replaceDishes, from: '2026-01-01', till: '2026-02-15' });
+    expect(askedDishes).toEqual([{ from: '2026-01-01', till: '2026-01-31' }, { from: '2026-02-01', till: '2026-02-15' }]);
+    expect(replaced).toEqual([['point-1', '2026-01-01', '2026-01-31', 1], ['point-1', '2026-02-01', '2026-02-15', 1]]);
+    expect(s.dishes).toEqual({ rows: 2 });
+  });
+
+  it('сбой загрузки позиций не роняет выручку: она записана, ошибка — в сводке', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {});
+    const { client } = fakeClient(plyushkino, [{ date: '2026-11-16', amount: 100, confectionery: 0 }], new Error('iiko down'));
+    const written: DailyRevenue[] = [];
+    const s = await syncIikoRevenue({
+      client,
+      upsert: async (_p, d) => (written.push(d), 'imported' as const),
+      replaceDishes: async () => 0,
+      from: '2026-11-16',
+      till: '2026-11-16',
+    });
+    expect(written).toHaveLength(1);
+    expect(s).toMatchObject({ days: 1, imported: 1, dishes: { error: 'iiko down' } });
+  });
+
+  it('сбой выручки не мешает позициям, но наружу уходит ошибка выручки', async () => {
+    const { client } = fakeClient(plyushkino, [{ date: '2026-11-16', amount: 100, confectionery: 0 }], [pizza('2026-11-16')]);
+    let dishRows = 0;
+    await expect(
+      syncIikoRevenue({
+        client,
+        upsert: async () => {
+          throw new Error('db revenue down');
+        },
+        replaceDishes: async (_p, _f, _t, rows) => (dishRows += rows.length),
+        from: '2026-11-16',
+        till: '2026-11-16',
+      }),
+    ).rejects.toThrow('db revenue down');
+    expect(dishRows).toBe(1);
   });
 });

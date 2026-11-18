@@ -66,6 +66,7 @@ model Point {
   sheets    Sheet[]
   revenues  Revenue[]
   expenses  Expense[]
+  dishSales DishSale[]
 }
 
 model Product {
@@ -155,6 +156,30 @@ model Revenue {
 
   @@unique([pointId, date])
   @@index([date])
+}
+
+/// Продажи позиции iiko за учётный день (только Плюшкино). Ключ позиции — iiko DishId.
+model DishSale {
+  id         String   @id @default(cuid())
+  pointId    String
+  point      Point    @relation(fields: [pointId], references: [id])
+  date       DateTime @db.Date
+  dishId     String
+  name       String
+  dishGroup  String?
+  qty        Decimal  @db.Decimal(12, 3)
+  revenue    Decimal  @db.Decimal(12, 2)
+  /// 0 — себестоимость в iiko не заполнена.
+  cost       Decimal  @db.Decimal(12, 2)
+  /// Чеков с этой позицией.
+  checks     Int
+  /// Чеков, где кроме неё только служебное (пакет и т. п.).
+  soloChecks Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([pointId, date, dishId])
+  @@index([pointId, date])
 }
 
 model Expense {

@@ -6,8 +6,8 @@ const { prisma } = vi.hoisted(() => ({ prisma: {} }));
 vi.mock('@/lib/db/client', () => ({ getPrisma: () => prisma }));
 vi.mock('@/lib/iiko/sync', async (orig) => ({ ...(await orig<typeof import('@/lib/iiko/sync')>()), runIikoSync: vi.fn() }));
 
-const req = (authorization?: string) =>
-  new Request('http://localhost/api/cron/iiko-sync', { headers: authorization ? { authorization } : {} });
+const req = (authorization?: string, query = '') =>
+  new Request(`http://localhost/api/cron/iiko-sync${query}`, { headers: authorization ? { authorization } : {} });
 
 beforeEach(() => {
   vi.clearAllMocks();
@@ -50,5 +50,22 @@ describe('GET /api/cron/iiko-sync', () => {
     const res = await GET(req('Bearer cron-s3cret'));
     expect(res.status).toBe(500);
     expect((await res.json()).error).toMatch(/HTTP 401/);
+  });
+
+  it('?from=&till= — загрузка истории за свой период', async () => {
+    const res = await GET(req('Bearer cron-s3cret', '?from=2026-01-01&till=2026-11-17'));
+    expect(res.status).toBe(200);
+    expect(runIikoSync).toHaveBeenCalledWith(prisma, { from: '2026-01-01', till: '2026-11-17' });
+  });
+
+  it.each([
+    ['«по» раньше «с»', '?from=2026-11-17&till=2026-01-01'],
+    ['больше 366 дней', '?from=2025-01-01&till=2026-11-17'],
+    ['одна дата', '?from=2026-11-17'],
+    ['мусор', '?from=вчера&till=сегодня'],
+  ])('400 — %s, iiko не трогаем', async (_name, query) => {
+    const res = await GET(req('Bearer cron-s3cret', query));
+    expect(res.status).toBe(400);
+    expect(runIikoSync).not.toHaveBeenCalled();
   });
 });

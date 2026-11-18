@@ -5,7 +5,7 @@ import { databaseOptions } from '../src/lib/db/connection-options';
 import { IikoClient } from '../src/lib/iiko/client';
 import { iikoAuthFromEnv, runIikoSync, syncWindow } from '../src/lib/iiko/sync';
 
-// Выручка Плюшкино из iikoCloud → Revenue (point-1, source iiko). Идемпотентно по дню.
+// Выручка Плюшкино из iikoCloud → Revenue (point-1, source iiko) и продажи по позициям → DishSale. Идемпотентно по дню.
 //   npm run import:iiko                                   — вчера и сегодня (как крон)
 //   npm run import:iiko -- --from=2026-02-01 --till=2026-06-08   — история (режется по 31 дню)
 //   npm run import:iiko -- --debug                        — организации и поля OLAP, без записи

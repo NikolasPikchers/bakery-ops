@@ -1,9 +1,10 @@
 import type { PrismaClient } from '@prisma/client';
+import { replaceDishSales } from '../db/dish-sale-repo';
 import { upsertImportedRevenue } from '../db/revenue-import-repo';
 import { todayMoscow } from '../staff/dates';
-import { IikoClient, type IikoAuth } from './client';
+import { IikoClient, splitRange, type IikoAuth } from './client';
 import { importRevenue } from './import-revenue';
-import type { DailyRevenue, RevenueImportSummary } from './types';
+import type { DailyRevenue, DishSaleDay, RevenueImportSummary } from './types';
 
 /** iiko стоит только в Плюшкино — вся выручка из него идёт в point-1. */
 const POINT = 'point-1';
@@ -24,12 +25,17 @@ export function syncWindow(now: Date): { from: string; till: string } {
   return { from, till };
 }
 
-export type IikoSalesSource = Pick<IikoClient, 'getOrganizations' | 'getDailySales'>;
-export type IikoSyncSummary = RevenueImportSummary & { from: string; till: string };
+export type IikoSalesSource = Pick<IikoClient, 'getOrganizations' | 'getDailySales' | 'getDishSales'>;
+export type DishSyncSummary = { rows: number } | { error: string };
+export type IikoSyncSummary = RevenueImportSummary & { from: string; till: string; dishes?: DishSyncSummary };
+
+const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
 
 export async function syncIikoRevenue(deps: {
   client: IikoSalesSource;
   upsert: (pointId: string, day: DailyRevenue) => Promise<'imported' | 'updated'>;
+  /** Продажи по позициям (страница «Ассортимент»); без него — только выручка. */
+  replaceDishes?: (pointId: string, from: string, till: string, rows: DishSaleDay[]) => Promise<number>;
   from: string;
   till: string;
 }): Promise<IikoSyncSummary> {
@@ -38,21 +44,47 @@ export async function syncIikoRevenue(deps: {
   if (orgs.length !== 1) {
     throw new Error(`Ключ iiko видит ${orgs.length} организаций (${orgs.map((o) => o.name).join(', ')}), ожидалась одна — Плюшкино`);
   }
-  const summary = await importRevenue({
-    fetchSales: (f, t) => deps.client.getDailySales(f, t),
-    upsert: deps.upsert,
-    pointId: POINT,
-    from: deps.from,
-    till: deps.till,
-  });
-  return { from: deps.from, till: deps.till, ...summary };
+
+  // Выручка и позиции — отдельные шаги: сбой одного не должен оставить без другого.
+  let revenue: RevenueImportSummary | undefined;
+  let revenueError: unknown;
+  try {
+    revenue = await importRevenue({
+      fetchSales: (f, t) => deps.client.getDailySales(f, t),
+      upsert: deps.upsert,
+      pointId: POINT,
+      from: deps.from,
+      till: deps.till,
+    });
+  } catch (e) {
+    revenueError = e;
+  }
+
+  let dishes: DishSyncSummary | undefined;
+  if (deps.replaceDishes) {
+    try {
+      let rows = 0;
+      // По отрезкам iiko (≤ 31 дня): история с января не держится в памяти и в одной транзакции.
+      for (const part of splitRange(deps.from, deps.till)) {
+        rows += await deps.replaceDishes(POINT, part.from, part.till, await deps.client.getDishSales(part.from, part.till));
+      }
+      dishes = { rows };
+    } catch (e) {
+      dishes = { error: message(e) };
+      console.error('iiko dish sales failed:', message(e));
+    }
+  }
+
+  if (revenueError !== undefined) throw revenueError;
+  return { from: deps.from, till: deps.till, ...revenue!, ...(dishes ? { dishes } : {}) };
 }
 
-/** Боевая сборка: клиент из окружения + запись в Revenue (source iiko). */
+/** Боевая сборка: клиент из окружения + запись в Revenue (source iiko) и DishSale. */
 export function runIikoSync(prisma: PrismaClient, range: { from: string; till: string }): Promise<IikoSyncSummary> {
   return syncIikoRevenue({
     client: new IikoClient({ auth: iikoAuthFromEnv() }),
     upsert: (pointId, d) => upsertImportedRevenue(prisma, { pointId, date: d.date, amount: d.amount, confectionery: d.confectionery, source: 'iiko' }),
+    replaceDishes: (pointId, from, till, rows) => replaceDishSales(prisma, pointId, from, till, rows),
     ...range,
   });
 }

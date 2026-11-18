@@ -5,6 +5,14 @@ export async function register() {
   const { describeDatabaseConfig } = await import('@/lib/db/connection-options');
   console.log('Database config:', describeDatabaseConfig());
 
+  // Новые таблицы (prisma migrate в проекте нет) — «если нет»; сбой не должен ронять старт.
+  try {
+    const [{ ensureDishSaleTable }, { getPrisma }] = await Promise.all([import('@/lib/db/ensure-schema'), import('@/lib/db/client')]);
+    await ensureDishSaleTable(getPrisma());
+  } catch (e) {
+    console.error('DishSale schema:', e instanceof Error ? e.message : e);
+  }
+
   if (process.env.IIKO_SCHEDULER_ENABLED !== '1') return;
 
   const state = globalThis as typeof globalThis & { __stopIikoScheduler?: () => void };
