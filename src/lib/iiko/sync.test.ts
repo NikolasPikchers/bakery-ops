@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { iikoAuthFromEnv, syncIikoRevenue, syncWindow } from './sync';
+import type { PrismaClient } from '@prisma/client';
+import { catchUpWindow, iikoAuthFromEnv, lastLoadedIikoDay, syncIikoRevenue, syncWindow } from './sync';
 import type { DailyRevenue, DishSaleDay, IikoOrg } from './types';
 
 describe('iikoAuthFromEnv', () => {
@@ -23,6 +24,51 @@ describe('syncWindow', () => {
 
   it('через границу месяца', () => {
     expect(syncWindow(new Date('2026-12-01T10:00:00+03:00'))).toEqual({ from: '2026-11-30', till: '2026-12-01' });
+  });
+});
+
+describe('catchUpWindow — догрузка дней, пропущенных из-за сбоя iiko', () => {
+  const now = new Date('2026-11-25T04:00:00+03:00');
+
+  it('всё загружено — как обычно, вчера и сегодня', () => {
+    expect(catchUpWindow(now, '2026-11-25')).toEqual({ from: '2026-11-24', till: '2026-11-25' });
+    expect(catchUpWindow(now, '2026-11-24')).toEqual({ from: '2026-11-24', till: '2026-11-25' });
+  });
+
+  it('iiko лежал с 23-го — окно от последнего загруженного дня', () => {
+    expect(catchUpWindow(now, '2026-11-22')).toEqual({ from: '2026-11-22', till: '2026-11-25' });
+  });
+
+  it('долгий сбой — не глубже 62 дней', () => {
+    expect(catchUpWindow(now, '2026-06-01')).toEqual({ from: '2026-09-25', till: '2026-11-25' });
+  });
+
+  it('данных ещё нет — как обычно', () => {
+    expect(catchUpWindow(now, null)).toEqual({ from: '2026-11-24', till: '2026-11-25' });
+  });
+});
+
+describe('lastLoadedIikoDay', () => {
+  const fake = (revenue: string | null, dishes: string | null) => {
+    const d = (iso: string | null) => ({ _max: { date: iso ? new Date(`${iso}T00:00:00.000Z`) : null } });
+    const revenueAggregate = vi.fn(async () => d(revenue));
+    const prisma = { revenue: { aggregate: revenueAggregate }, dishSale: { aggregate: vi.fn(async () => d(dishes)) } } as unknown as PrismaClient;
+    return { prisma, revenueAggregate };
+  };
+
+  it('берёт более ранний из двух: выручку и позиции догружаем вместе', async () => {
+    expect(await lastLoadedIikoDay(fake('2026-11-24', '2026-11-21').prisma)).toBe('2026-11-21');
+    expect(await lastLoadedIikoDay(fake('2026-11-20', '2026-11-24').prisma)).toBe('2026-11-20');
+  });
+
+  it('выручка — только из iiko и только Плюшкино (ручная не считается загрузкой)', async () => {
+    const { prisma, revenueAggregate } = fake('2026-11-24', null);
+    expect(await lastLoadedIikoDay(prisma)).toBe('2026-11-24');
+    expect(revenueAggregate).toHaveBeenCalledWith({ where: { pointId: 'point-1', source: 'iiko' }, _max: { date: true } });
+  });
+
+  it('пусто — null', async () => {
+    expect(await lastLoadedIikoDay(fake(null, null).prisma)).toBeNull();
   });
 });
 

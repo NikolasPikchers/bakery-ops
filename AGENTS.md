@@ -29,7 +29,8 @@ URL датасорса в `prisma.config.ts`, не в `schema.prisma`) · дал
   и «Итого» без блюда — пропускаются). Кондитерка — строки с префиксом «\».
 - `src/lib/iiko/sales-days.ts` — какой день писать: период из шапки > дата из имени файла; период > 1 дня делится поровну
 - `src/lib/iiko/client.ts` — iikoCloud API: токен v2 (appId+apiKey+clientSecret), OLAP SALES по дням×блюдам (≤ 31 дня за запрос)
-- `src/lib/iiko/sync.ts` — синхронизация выручки Плюшкино (вчера+сегодня по МСК) → `Revenue`; её зовут ночной
+- `src/lib/iiko/sync.ts` — синхронизация выручки Плюшкино (вчера+сегодня по МСК, после сбоя — с последнего
+  загруженного дня, до 62 дней) → `Revenue` и `DishSale`; её зовут ночной
   Vercel Cron `/api/cron/iiko-sync` (CRON_SECRET), `/api/revenue/iiko-sync` (дашборд, кнопка) и CLI `npm run import:iiko`.
   Подробности и ключи — `docs/iiko-import.md`.
 - `src/lib/assortment/` — страница «Ассортимент» (`/assortment`): `classify.ts` (категория по префиксу «//»/«\» и группе

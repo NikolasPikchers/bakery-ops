@@ -25,6 +25,38 @@ export function syncWindow(now: Date): { from: string; till: string } {
   return { from, till };
 }
 
+/** После сбоя iiko догружаем пропущенные дни, но не глубже стольких дней (два окна OLAP). */
+export const MAX_CATCH_UP_DAYS = 62;
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+const minusDays = (iso: string, days: number) => isoDay(new Date(Date.parse(`${iso}T00:00:00.000Z`) - days * 86_400_000));
+
+/**
+ * Окно с догрузкой: обычно вчера и сегодня, а если iiko лежал — от последнего загруженного дня
+ * (он мог загрузиться не до конца), но не раньше чем за 62 дня.
+ */
+export function catchUpWindow(now: Date, lastLoaded: string | null): { from: string; till: string } {
+  const base = syncWindow(now);
+  if (!lastLoaded || lastLoaded >= base.from) return base;
+  const floor = minusDays(base.till, MAX_CATCH_UP_DAYS - 1);
+  return { from: lastLoaded < floor ? floor : lastLoaded, till: base.till };
+}
+
+/** Последний день, загруженный из iiko: более ранний из выручки и продаж по позициям — догружаем их вместе. */
+export async function lastLoadedIikoDay(prisma: PrismaClient): Promise<string | null> {
+  const [revenue, dishes] = await Promise.all([
+    prisma.revenue.aggregate({ where: { pointId: POINT, source: 'iiko' }, _max: { date: true } }),
+    prisma.dishSale.aggregate({ where: { pointId: POINT }, _max: { date: true } }),
+  ]);
+  const days = [revenue._max.date, dishes._max.date].filter((d): d is Date => d != null).map(isoDay);
+  return days.length > 0 ? days.sort()[0] : null;
+}
+
+/** Окно для ночного прогона, крона и дашборда — с догрузкой пропущенного. */
+export async function iikoCatchUpWindow(prisma: PrismaClient, now: Date): Promise<{ from: string; till: string }> {
+  return catchUpWindow(now, await lastLoadedIikoDay(prisma));
+}
+
 export type IikoSalesSource = Pick<IikoClient, 'getOrganizations' | 'getDailySales' | 'getDishSales'>;
 export type DishSyncSummary = { rows: number } | { error: string };
 export type IikoSyncSummary = RevenueImportSummary & { from: string; till: string; dishes?: DishSyncSummary };

@@ -1,12 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { POST } from './route';
 import { auth } from '@/auth';
-import { runIikoSync } from '@/lib/iiko/sync';
+import { iikoCatchUpWindow, runIikoSync } from '@/lib/iiko/sync';
 
 const { prisma } = vi.hoisted(() => ({ prisma: {} }));
 vi.mock('@/auth', () => ({ auth: vi.fn() }));
 vi.mock('@/lib/db/client', () => ({ getPrisma: () => prisma }));
-vi.mock('@/lib/iiko/sync', async (orig) => ({ ...(await orig<typeof import('@/lib/iiko/sync')>()), runIikoSync: vi.fn() }));
+vi.mock('@/lib/iiko/sync', async (orig) => ({ ...(await orig<typeof import('@/lib/iiko/sync')>()), runIikoSync: vi.fn(), iikoCatchUpWindow: vi.fn() }));
 
 const req = (body?: unknown) =>
   new Request('http://localhost/api/revenue/iiko-sync', {
@@ -17,6 +17,8 @@ const req = (body?: unknown) =>
 
 beforeEach(() => {
   vi.clearAllMocks();
+  // Окно с догрузкой считается по базе — здесь его подменяем; логика окна — в sync.test.ts.
+  vi.mocked(iikoCatchUpWindow).mockResolvedValue({ from: '2026-11-16', till: '2026-11-17' });
   vi.useFakeTimers({ now: new Date('2026-11-17T09:40:00+03:00'), toFake: ['Date'] });
   vi.mocked(auth).mockResolvedValue({ role: 'owner', user: { name: 'Владелец' }, expires: '' } as never);
   vi.mocked(runIikoSync).mockImplementation(async (_p, r) => ({ ...r, days: 1, imported: 0, updated: 1 }));
@@ -25,9 +27,10 @@ beforeEach(() => {
 afterEach(() => vi.useRealTimers());
 
 describe('POST /api/revenue/iiko-sync', () => {
-  it('без тела — вчера и сегодня по Москве', async () => {
+  it('без тела — окно с догрузкой пропущенных дней (по умолчанию вчера и сегодня)', async () => {
     const res = await POST(req());
     expect(res.status).toBe(200);
+    expect(iikoCatchUpWindow).toHaveBeenCalledWith(prisma, expect.any(Date));
     expect(runIikoSync).toHaveBeenCalledWith(prisma, { from: '2026-11-16', till: '2026-11-17' });
     expect(await res.json()).toMatchObject({ from: '2026-11-16', till: '2026-11-17', updated: 1 });
   });
@@ -52,6 +55,6 @@ describe('POST /api/revenue/iiko-sync', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = await POST(req());
     expect(res.status).toBe(502);
-    expect((await res.json()).error).toMatch(/HTTP 429/);
+    expect(await res.json()).toMatchObject({ error: expect.stringMatching(/HTTP 429/), from: '2026-11-16', till: '2026-11-17' });
   });
 });

@@ -18,7 +18,7 @@ export async function register() {
   const state = globalThis as typeof globalThis & { __stopIikoScheduler?: () => void };
   if (state.__stopIikoScheduler) return;
 
-  const [{ startIikoScheduler }, { runIikoSync, syncWindow, iikoAuthFromEnv }, { runTbankSync, tbankSyncWindow }, { runNightlySync }, { getPrisma }] =
+  const [{ startIikoScheduler }, { runIikoSync, iikoCatchUpWindow, iikoAuthFromEnv }, { runTbankSync, tbankSyncWindow }, { runNightlySync }, { getPrisma }] =
     await Promise.all([
       import('@/lib/iiko/scheduler'),
       import('@/lib/iiko/sync'),
@@ -30,7 +30,8 @@ export async function register() {
   // 04:00 МСК: выручка из iiko и расходы из Т-Бизнеса (если задан токен банка).
   state.__stopIikoScheduler = startIikoScheduler(() =>
     runNightlySync([
-      { name: 'iiko', run: () => runIikoSync(getPrisma(), syncWindow(new Date())) },
+      // С догрузкой: если iiko лежал, подтягиваем дни с последнего загруженного.
+      { name: 'iiko', run: async () => runIikoSync(getPrisma(), await iikoCatchUpWindow(getPrisma(), new Date())) },
       ...(process.env.TBUSINESS_API_TOKEN ? [{ name: 'tbank', run: () => runTbankSync(getPrisma(), tbankSyncWindow(new Date())) }] : []),
     ]),
   );

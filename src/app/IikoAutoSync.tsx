@@ -8,8 +8,8 @@ type State = { kind: 'busy' } | { kind: 'ok'; at: string } | { kind: 'error'; me
 const hhmm = () => new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Moscow' });
 
 /**
- * При открытии дашборда подтягивает выручку Плюшкино из iiko за вчера и сегодня
- * и перерисовывает страницу. Ночной крон закрывает день; это — «онлайн» в течение дня.
+ * При открытии дашборда подтягивает выручку Плюшкино из iiko за вчера и сегодня (после сбоя iiko —
+ * с последнего загруженного дня) и перерисовывает страницу. Ночной прогон закрывает день; это — «онлайн» в течение дня.
  */
 export function IikoAutoSync() {
   const router = useRouter();
@@ -35,7 +35,7 @@ export function IikoAutoSync() {
   const text = state.kind === 'busy' ? 'iiko: обновляю…' : state.kind === 'ok' ? `iiko: ${state.at}` : 'iiko: нет связи';
   const color = state.kind === 'error' ? '#c0392b' : 'var(--muted)';
   return (
-    <span title={state.kind === 'error' ? state.message : 'Выручка Плюшкино из iiko за вчера и сегодня'} style={{ fontSize: 12.5, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
+    <span title={state.kind === 'error' ? state.message : 'Выручка Плюшкино из iiko за вчера и сегодня; пропущенные из-за сбоя дни догружаются сами'} style={{ fontSize: 12.5, fontWeight: 700, color, whiteSpace: 'nowrap' }}>
       {text}
     </span>
   );
